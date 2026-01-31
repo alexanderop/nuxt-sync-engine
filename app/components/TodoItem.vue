@@ -22,7 +22,7 @@ interface Props {
   todo: SyncItem & { data: { text: string, completed: boolean } }
 }
 
-const props = defineProps<Props>()
+const { todo } = defineProps<Props>()
 
 const emit = defineEmits<{
   toggle: [id: string]
@@ -32,15 +32,15 @@ const emit = defineEmits<{
 
 const isEditing = ref(false)
 const editText = ref('')
-const editInput = ref<HTMLInputElement | null>(null)
+const editInput = useTemplateRef<HTMLInputElement>('editInput')
 
 function handleToggle() {
-  emit('toggle', props.todo.id)
+  emit('toggle', todo.id)
 }
 
 function startEdit() {
   isEditing.value = true
-  editText.value = props.todo.data.text
+  editText.value = todo.data.text
 
   // Focus input on next tick
   nextTick(() => {
@@ -51,8 +51,8 @@ function startEdit() {
 
 function handleEditSubmit() {
   const trimmed = editText.value.trim()
-  if (trimmed && trimmed !== props.todo.data.text) {
-    emit('update', props.todo.id, trimmed)
+  if (trimmed && trimmed !== todo.data.text) {
+    emit('update', todo.id, trimmed)
   }
   isEditing.value = false
 }
@@ -68,11 +68,11 @@ function handleEditBlur() {
 
 function handleEditCancel() {
   isEditing.value = false
-  editText.value = props.todo.data.text
+  editText.value = todo.data.text
 }
 
 function handleDelete() {
-  emit('delete', props.todo.id)
+  emit('delete', todo.id)
 }
 </script>
 

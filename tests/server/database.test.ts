@@ -2,14 +2,13 @@ import Database from 'better-sqlite3'
 import { afterAll, describe, expect, it } from 'vitest'
 
 describe('better-sqlite3 native module', () => {
-  let db: Database.Database
+  const db = new Database(':memory:')
 
-  afterAll(() => db?.close())
+  afterAll(() => db.close())
 
   it('should load native bindings', () => {
-    expect(() => {
-      db = new Database(':memory:')
-    }).not.toThrow()
+    expect(db).toBeDefined()
+    expect(db.memory).toBe(true)
   })
 
   it('should execute SQL and support transactions', () => {

@@ -20,6 +20,7 @@ import type { SyncItem } from '../../shared/types'
 import { mkdir } from 'node:fs/promises'
 import { dirname } from 'node:path'
 import Database from 'better-sqlite3'
+import { tryCatchSync } from '../../utils/tryCatch'
 
 // =============================================================================
 // DATABASE INSTANCE
@@ -27,15 +28,34 @@ import Database from 'better-sqlite3'
 
 let db: Database.Database | null = null
 
+// Type guards for better-sqlite3 return values
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null
+}
+
+function toRecordArray(rows: unknown[]): Record<string, unknown>[] {
+  return rows.filter(isRecord)
+}
+
+function toRecordOrUndefined(row: unknown): Record<string, unknown> | undefined {
+  return isRecord(row) ? row : undefined
+}
+
 /**
  * Get the database instance, initializing if needed.
  */
+function getDbPath(config: ReturnType<typeof useRuntimeConfig>): string {
+  if (typeof config.databasePath === 'string')
+    return config.databasePath
+  return 'data/sync.db'
+}
+
 export async function getDatabase(): Promise<Database.Database> {
   if (db)
     return db
 
   const config = useRuntimeConfig()
-  const dbPath = (config.databasePath as string) || 'data/sync.db'
+  const dbPath = getDbPath(config)
 
   // Create data directory
   await mkdir(dirname(dbPath), { recursive: true })
@@ -47,7 +67,8 @@ export async function getDatabase(): Promise<Database.Database> {
   db.pragma('foreign_keys = ON')
 
   // Create tables
-  db.exec(`
+  const [execError] = tryCatchSync(() =>
+    db!.exec(`
     -- Todos table (matches client schema)
     CREATE TABLE IF NOT EXISTS todos (
       id TEXT PRIMARY KEY,
@@ -81,9 +102,14 @@ export async function getDatabase(): Promise<Database.Database> {
       key TEXT PRIMARY KEY,
       value TEXT NOT NULL
     );
-  `)
+  `),
+  )
 
-  console.log('[db] Server database initialized')
+  if (execError) {
+    throw new Error(`Failed to initialize database schema: ${execError.message}`)
+  }
+
+  console.info('[db] Server database initialized')
   return db
 }
 
@@ -116,7 +142,12 @@ export function getServerChangesSince(
 
   query += ' ORDER BY updated_at ASC'
 
-  const rows = db.prepare(query).all(...params) as Record<string, unknown>[]
+  const [queryError, rawRows] = tryCatchSync(() => db!.prepare(query).all(...params))
+  if (queryError) {
+    throw new Error(`Failed to query changes: ${queryError.message}`)
+  }
+
+  const rows = toRecordArray(rawRows)
   return rows.map(rowToSyncItem)
 }
 
@@ -127,10 +158,14 @@ export function getItemById(tableName: string, id: string): SyncItem | null {
   if (!db)
     throw new Error('Database not initialized')
 
-  const row = db.prepare(`SELECT * FROM ${tableName} WHERE id = ?`).get(id) as
-    | Record<string, unknown>
-    | undefined
+  const [queryError, rawRow] = tryCatchSync(() =>
+    db!.prepare(`SELECT * FROM ${tableName} WHERE id = ?`).get(id),
+  )
+  if (queryError) {
+    throw new Error(`Failed to get item by id: ${queryError.message}`)
+  }
 
+  const row = toRecordOrUndefined(rawRow)
   return row ? rowToSyncItem(row) : null
 }
 
@@ -155,9 +190,14 @@ export function upsertItem(tableName: string, item: SyncItem): boolean {
   const values = buildRowValues(item, columns)
   const placeholders = columns.map(() => '?').join(', ')
 
-  db.prepare(
-    `INSERT OR REPLACE INTO ${tableName} (${columns.join(', ')}) VALUES (${placeholders})`,
-  ).run(...values)
+  const [upsertError] = tryCatchSync(() =>
+    db!.prepare(
+      `INSERT OR REPLACE INTO ${tableName} (${columns.join(', ')}) VALUES (${placeholders})`,
+    ).run(...values),
+  )
+  if (upsertError) {
+    throw new Error(`Failed to upsert item: ${upsertError.message}`)
+  }
 
   return true
 }
@@ -191,11 +231,14 @@ export function batchUpsert(
         const values = buildRowValues(item, columns)
         const placeholders = columns.map(() => '?').join(', ')
 
-        db!
-          .prepare(
+        const [insertError] = tryCatchSync(() =>
+          db!.prepare(
             `INSERT OR REPLACE INTO ${tableName} (${columns.join(', ')}) VALUES (${placeholders})`,
-          )
-          .run(...values)
+          ).run(...values),
+        )
+        if (insertError) {
+          throw new Error(`Failed to insert item in batch: ${insertError.message}`)
+        }
 
         stored.push(1)
       }
@@ -229,55 +272,60 @@ function getTableColumns(tableName: string): string[] {
 }
 
 /**
+ * Get metadata value from SyncItem for a column.
+ */
+function getMetadataValue(item: SyncItem, col: string): unknown {
+  const metadataMap: Record<string, unknown> = {
+    id: item.id,
+    created_at: item.createdAt,
+    updated_at: item.updatedAt,
+    device_id: item.deviceId,
+    deleted: item.deleted ? 1 : 0,
+  }
+  return metadataMap[col]
+}
+
+/**
+ * Convert a data field value for SQLite storage.
+ */
+function convertDataValue(value: unknown): unknown {
+  if (typeof value === 'boolean')
+    return value ? 1 : 0
+  if (typeof value === 'object' && value !== null)
+    return JSON.stringify(value)
+  return value
+}
+
+/**
  * Build row values from a SyncItem.
  */
 function buildRowValues(item: SyncItem, columns: string[]): unknown[] {
-  const values: unknown[] = []
+  return columns.map((col) => {
+    const metadataValue = getMetadataValue(item, col)
+    if (metadataValue !== undefined)
+      return metadataValue
+    return convertDataValue(item.data[col])
+  })
+}
 
-  for (const col of columns) {
-    switch (col) {
-      case 'id':
-        values.push(item.id)
-        break
-      case 'created_at':
-        values.push(item.createdAt)
-        break
-      case 'updated_at':
-        values.push(item.updatedAt)
-        break
-      case 'device_id':
-        values.push(item.deviceId)
-        break
-      case 'deleted':
-        values.push(item.deleted ? 1 : 0)
-        break
-      default: {
-        // Data field
-        const value = item.data[col]
-        if (typeof value === 'boolean') {
-          values.push(value ? 1 : 0)
-        }
-        else if (typeof value === 'object' && value !== null) {
-          values.push(JSON.stringify(value))
-        }
-        else {
-          values.push(value)
-        }
-      }
-    }
-  }
+function getString(row: Record<string, unknown>, key: string): string {
+  const value = row[key]
+  return typeof value === 'string' ? value : ''
+}
 
-  return values
+function getNumber(row: Record<string, unknown>, key: string): number {
+  const value = row[key]
+  return typeof value === 'number' ? value : 0
 }
 
 /**
  * Convert a database row to SyncItem.
  */
 function rowToSyncItem(row: Record<string, unknown>): SyncItem {
-  const id = row.id as string
-  const createdAt = row.created_at as number
-  const updatedAt = row.updated_at as number
-  const deviceId = row.device_id as string
+  const id = getString(row, 'id')
+  const createdAt = getNumber(row, 'created_at')
+  const updatedAt = getNumber(row, 'updated_at')
+  const deviceId = getString(row, 'device_id')
   const deleted = row.deleted === 1
 
   // Extract data fields

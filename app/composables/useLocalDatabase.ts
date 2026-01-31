@@ -63,12 +63,12 @@ export async function useLocalDatabase(): Promise<Database> {
 async function initializeDatabase(): Promise<Database> {
   // Initialize sql.js WASM (only once)
   if (!SQL) {
-    console.log('[db] Loading sql.js WASM...')
+    console.info('[db] Loading sql.js WASM...')
     SQL = await initSqlJs({
       // Use local WASM file (copied by setup:wasm script)
       locateFile: file => `/wasm/${file}`,
     })
-    console.log('[db] sql.js loaded')
+    console.info('[db] sql.js loaded')
   }
 
   // Check for OPFS support
@@ -97,7 +97,7 @@ async function initializeDatabase(): Promise<Database> {
     if (buffer.byteLength > 0) {
       // Load existing database
       db = new SQL.Database(new Uint8Array(buffer))
-      console.log('[db] Loaded existing database from OPFS')
+      console.info('[db] Loaded existing database from OPFS')
 
       // Ensure schema is up to date
       initializeSchema(db)
@@ -107,7 +107,7 @@ async function initializeDatabase(): Promise<Database> {
       db = new SQL.Database()
       initializeSchema(db)
       await persistDatabase()
-      console.log('[db] Created new database in OPFS')
+      console.info('[db] Created new database in OPFS')
     }
   }
   catch (error) {
@@ -137,7 +137,7 @@ function initializeSchema(database: Database): void {
   const schemaSql = generateAllSchemaSql()
   database.run(schemaSql)
 
-  console.log('[db] Schema initialized')
+  console.info('[db] Schema initialized')
 }
 
 /**
@@ -184,6 +184,7 @@ export function queryAll<T extends Record<string, unknown>>(
     stmt.bind(params)
     const results: T[] = []
     while (stmt.step()) {
+      // eslint-disable-next-line ts/consistent-type-assertions -- sql.js getAsObject returns unknown
       results.push(stmt.getAsObject() as T)
     }
     return results
@@ -338,12 +339,22 @@ export function getAllItems(tableName: string): SyncItem[] {
 /**
  * Convert a database row to a SyncItem.
  */
+function getString(row: Record<string, unknown>, key: string): string {
+  const value = row[key]
+  return typeof value === 'string' ? value : ''
+}
+
+function getNumber(row: Record<string, unknown>, key: string): number {
+  const value = row[key]
+  return typeof value === 'number' ? value : 0
+}
+
 function rowToSyncItem(row: Record<string, unknown>): SyncItem {
   // Extract metadata columns
-  const id = row.id as string
-  const createdAt = row.created_at as number
-  const updatedAt = row.updated_at as number
-  const deviceId = row.device_id as string
+  const id = getString(row, 'id')
+  const createdAt = getNumber(row, 'created_at')
+  const updatedAt = getNumber(row, 'updated_at')
+  const deviceId = getString(row, 'device_id')
   const deleted = row.deleted === 1
 
   // Extract data columns (everything else)

@@ -130,6 +130,40 @@ export interface CoListSchema<T extends CoMapSchema<SchemaShape>> {
 // =============================================================================
 
 /**
+ * Get SQL type for a literal value based on its JS type.
+ */
+function literalValueToSqlType(value: unknown): ColumnDef['type'] {
+  if (typeof value === 'number')
+    return 'REAL'
+  if (typeof value === 'boolean')
+    return 'INTEGER'
+  return 'TEXT'
+}
+
+/**
+ * Get SQL type for unwrapped (non-optional/nullable) Zod schema.
+ */
+function getBaseZodSqlType(schema: z.ZodTypeAny): ColumnDef['type'] {
+  if (schema instanceof z.ZodString)
+    return 'TEXT'
+  if (schema instanceof z.ZodNumber)
+    return 'REAL'
+  if (schema instanceof z.ZodBoolean)
+    return 'INTEGER'
+  if (schema instanceof z.ZodDate)
+    return 'INTEGER'
+  if (schema instanceof z.ZodArray)
+    return 'TEXT'
+  if (schema instanceof z.ZodObject)
+    return 'TEXT'
+  if (schema instanceof z.ZodEnum)
+    return 'TEXT'
+  if (schema instanceof z.ZodLiteral)
+    return literalValueToSqlType(schema.value)
+  return 'TEXT'
+}
+
+/**
  * Map Zod type to SQLite column type.
  */
 function zodToSqlType(schema: z.ZodTypeAny): ColumnDef['type'] {
@@ -137,35 +171,7 @@ function zodToSqlType(schema: z.ZodTypeAny): ColumnDef['type'] {
   if (schema instanceof z.ZodOptional || schema instanceof z.ZodNullable) {
     return zodToSqlType(schema.unwrap())
   }
-
-  // Check for specific types
-  if (schema instanceof z.ZodString)
-    return 'TEXT'
-  if (schema instanceof z.ZodNumber)
-    return 'REAL'
-  if (schema instanceof z.ZodBoolean)
-    return 'INTEGER' // SQLite uses 0/1
-  if (schema instanceof z.ZodDate)
-    return 'INTEGER' // Store as Unix timestamp
-  if (schema instanceof z.ZodArray)
-    return 'TEXT' // Store as JSON
-  if (schema instanceof z.ZodObject)
-    return 'TEXT' // Store as JSON
-  if (schema instanceof z.ZodEnum)
-    return 'TEXT'
-  if (schema instanceof z.ZodLiteral) {
-    const value = schema.value
-    if (typeof value === 'string')
-      return 'TEXT'
-    if (typeof value === 'number')
-      return 'REAL'
-    if (typeof value === 'boolean')
-      return 'INTEGER'
-    return 'TEXT'
-  }
-
-  // Default to TEXT (JSON serialized)
-  return 'TEXT'
+  return getBaseZodSqlType(schema)
 }
 
 /**
@@ -283,12 +289,14 @@ CREATE INDEX IF NOT EXISTS idx_${schemaName}_deleted ON ${schemaName}(deleted);`
         deviceId: options?.deviceId || 'unknown',
         deleted: false,
       },
+      // eslint-disable-next-line ts/consistent-type-assertions -- Zod parse returns validated shape
       data: validated as InferShape<S>,
     }
   }
 
   // Validate data
   const validate = (data: unknown): InferShape<S> => {
+    // eslint-disable-next-line ts/consistent-type-assertions -- Zod parse returns validated shape
     return zodSchema.parse(data) as InferShape<S>
   }
 
@@ -444,6 +452,35 @@ export function coValueToRow<S extends SchemaShape>(
 }
 
 /**
+ * Convert a single field value from SQLite format based on Zod schema.
+ */
+function convertFieldFromSql(value: unknown, fieldSchema: z.ZodTypeAny): unknown {
+  if (fieldSchema instanceof z.ZodBoolean) {
+    return value === 1 || value === true
+  }
+  if (fieldSchema instanceof z.ZodDate) {
+    return typeof value === 'number' ? new Date(value) : value
+  }
+  if (fieldSchema instanceof z.ZodObject || fieldSchema instanceof z.ZodArray) {
+    return typeof value === 'string' ? JSON.parse(value) : value
+  }
+  return value
+}
+
+/**
+ * Extract metadata from a database row.
+ */
+function extractRowMetadata(row: Record<string, unknown>): CoValueMeta {
+  return {
+    id: typeof row.id === 'string' ? row.id : '',
+    createdAt: typeof row.created_at === 'number' ? row.created_at : 0,
+    updatedAt: typeof row.updated_at === 'number' ? row.updated_at : 0,
+    deviceId: typeof row.device_id === 'string' ? row.device_id : '',
+    deleted: row.deleted === 1,
+  }
+}
+
+/**
  * Convert a database row back to a CoValue.
  */
 export function rowToCoValue<S extends SchemaShape>(
@@ -452,40 +489,14 @@ export function rowToCoValue<S extends SchemaShape>(
 ): CoValue<InferShape<S>> {
   const data: Record<string, unknown> = {}
 
-  // Extract data fields based on schema
   for (const [key, fieldSchema] of Object.entries(schema.shape)) {
-    const value = row[key]
-
-    // Convert integers back to booleans
-    if (fieldSchema instanceof z.ZodBoolean) {
-      data[key] = value === 1 || value === true
-    }
-    // Convert timestamps back to dates
-    else if (fieldSchema instanceof z.ZodDate) {
-      data[key] = typeof value === 'number' ? new Date(value) : value
-    }
-    // Parse JSON for objects/arrays
-    else if (
-      fieldSchema instanceof z.ZodObject
-      || fieldSchema instanceof z.ZodArray
-    ) {
-      data[key] = typeof value === 'string' ? JSON.parse(value) : value
-    }
-    // Keep primitives as-is
-    else {
-      data[key] = value
-    }
+    data[key] = convertFieldFromSql(row[key], fieldSchema)
   }
 
   return {
-    $jazz: {
-      id: row.id as string,
-      createdAt: row.created_at as number,
-      updatedAt: row.updated_at as number,
-      deviceId: row.device_id as string,
-      deleted: row.deleted === 1,
-    },
-    data: data as InferShape<S>,
+    $jazz: extractRowMetadata(row),
+    // eslint-disable-next-line ts/consistent-type-assertions -- Data built from schema fields
+    data: data as unknown as InferShape<S>,
   }
 }
 

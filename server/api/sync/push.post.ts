@@ -45,7 +45,7 @@ export default defineEventHandler(async (event): Promise<SyncPushResponse> => {
   // Process changes
   const { stored, conflicts } = batchUpsert(schema, changes)
 
-  console.log(
+  console.info(
     `[push] Received ${changes.length} changes for ${schema}: ${stored} stored, ${conflicts.length} conflicts`,
   )
 

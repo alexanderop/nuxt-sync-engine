@@ -69,7 +69,7 @@ export interface SyncEngineOptions {
  *
  * // Check sync state
  * if (state.value.isSyncing) {
- *   console.log('Sync in progress...');
+ *   console.info('Sync in progress...');
  * }
  * ```
  */
@@ -128,13 +128,13 @@ export function useSyncEngine(options: SyncEngineOptions) {
 
   function handleOnline() {
     state.value.isOnline = true
-    console.log('[sync] Back online, triggering sync...')
+    console.info('[sync] Back online, triggering sync...')
     sync()
   }
 
   function handleOffline() {
     state.value.isOnline = false
-    console.log('[sync] Went offline')
+    console.info('[sync] Went offline')
   }
 
   // ==========================================================================
@@ -151,7 +151,7 @@ export function useSyncEngine(options: SyncEngineOptions) {
    */
   async function push(): Promise<SyncPushResponse | null> {
     if (!state.value.isOnline) {
-      console.log('[sync] Offline, skipping push')
+      console.info('[sync] Offline, skipping push')
       return null
     }
 
@@ -159,11 +159,11 @@ export function useSyncEngine(options: SyncEngineOptions) {
     const changes = getChangesSince(tableName, state.value.lastSyncAt)
 
     if (changes.length === 0) {
-      console.log('[sync] No local changes to push')
+      console.info('[sync] No local changes to push')
       return { syncedAt: Date.now(), conflicts: [], stored: 0 }
     }
 
-    console.log(`[sync] Pushing ${changes.length} changes...`)
+    console.info(`[sync] Pushing ${changes.length} changes...`)
 
     const request: SyncPushRequest = {
       deviceId,
@@ -180,14 +180,14 @@ export function useSyncEngine(options: SyncEngineOptions) {
 
       // Handle conflicts - server had newer versions
       if (response.conflicts.length > 0) {
-        console.log(`[sync] Received ${response.conflicts.length} conflicts`)
+        console.info(`[sync] Received ${response.conflicts.length} conflicts`)
         for (const conflict of response.conflicts) {
           applyRemoteChange(conflict)
         }
         onRemoteChanges?.(response.conflicts)
       }
 
-      console.log(`[sync] Push complete: ${response.stored} stored, ${response.conflicts.length} conflicts`)
+      console.info(`[sync] Push complete: ${response.stored} stored, ${response.conflicts.length} conflicts`)
       return response
     }
     catch (error) {
@@ -201,13 +201,13 @@ export function useSyncEngine(options: SyncEngineOptions) {
    */
   async function pull(): Promise<SyncPullResponse | null> {
     if (!state.value.isOnline) {
-      console.log('[sync] Offline, skipping pull')
+      console.info('[sync] Offline, skipping pull')
       return null
     }
 
     const deviceId = getDeviceId()
 
-    console.log(`[sync] Pulling changes since ${state.value.lastSyncAt}...`)
+    console.info(`[sync] Pulling changes since ${state.value.lastSyncAt}...`)
 
     try {
       const response = await $fetch<SyncPullResponse>('/api/sync/pull', {
@@ -220,14 +220,14 @@ export function useSyncEngine(options: SyncEngineOptions) {
 
       // Apply remote changes
       if (response.changes.length > 0) {
-        console.log(`[sync] Received ${response.changes.length} remote changes`)
+        console.info(`[sync] Received ${response.changes.length} remote changes`)
         for (const change of response.changes) {
           applyRemoteChange(change)
         }
         onRemoteChanges?.(response.changes)
       }
 
-      console.log(`[sync] Pull complete: ${response.changes.length} changes`)
+      console.info(`[sync] Pull complete: ${response.changes.length} changes`)
       return response
     }
     catch (error) {
@@ -241,12 +241,12 @@ export function useSyncEngine(options: SyncEngineOptions) {
    */
   async function sync(): Promise<void> {
     if (state.value.isSyncing) {
-      console.log('[sync] Sync already in progress, skipping')
+      console.info('[sync] Sync already in progress, skipping')
       return
     }
 
     if (!state.value.isOnline) {
-      console.log('[sync] Offline, skipping sync')
+      console.info('[sync] Offline, skipping sync')
       return
     }
 
@@ -270,7 +270,7 @@ export function useSyncEngine(options: SyncEngineOptions) {
       // 4. Persist database
       await persistDatabase()
 
-      console.log('[sync] Sync complete')
+      console.info('[sync] Sync complete')
     }
     catch (error) {
       state.value.error = error instanceof Error ? error.message : 'Sync failed'
@@ -290,34 +290,11 @@ export function useSyncEngine(options: SyncEngineOptions) {
     // Apply if no local version, or remote wins conflict
     if (!local || shouldRemoteWin(remote, local)) {
       upsertItem(tableName, remote)
-      console.log(`[sync] Applied remote change: ${remote.id}`)
+      console.info(`[sync] Applied remote change: ${remote.id}`)
     }
     else {
-      console.log(`[sync] Local wins conflict: ${remote.id}`)
+      console.info(`[sync] Local wins conflict: ${remote.id}`)
     }
-  }
-
-  /**
-   * Last-write-wins conflict resolution.
-   *
-   * > **What Jazz Does Better**
-   * >
-   * > Jazz uses:
-   * > - Session-based ordering (not timestamps)
-   * > - CRDT merge for concurrent edits
-   * > - Explicit branching/merging for conflicts
-   * >
-   * > We use simple timestamp comparison.
-   */
-  function shouldRemoteWin(remote: SyncItem, local: SyncItem): boolean {
-    // Higher timestamp wins
-    if (remote.updatedAt > local.updatedAt)
-      return true
-    if (remote.updatedAt < local.updatedAt)
-      return false
-
-    // Tiebreaker: higher device ID (deterministic)
-    return remote.deviceId > local.deviceId
   }
 
   /**
@@ -352,6 +329,33 @@ export function useSyncEngine(options: SyncEngineOptions) {
     // Helpers
     loadLastSyncAt,
   }
+}
+
+// =============================================================================
+// HELPER FUNCTIONS
+// =============================================================================
+
+/**
+ * Last-write-wins conflict resolution.
+ *
+ * > **What Jazz Does Better**
+ * >
+ * > Jazz uses:
+ * > - Session-based ordering (not timestamps)
+ * > - CRDT merge for concurrent edits
+ * > - Explicit branching/merging for conflicts
+ * >
+ * > We use simple timestamp comparison.
+ */
+function shouldRemoteWin(remote: SyncItem, local: SyncItem): boolean {
+  // Higher timestamp wins
+  if (remote.updatedAt > local.updatedAt)
+    return true
+  if (remote.updatedAt < local.updatedAt)
+    return false
+
+  // Tiebreaker: higher device ID (deterministic)
+  return remote.deviceId > local.deviceId
 }
 
 // =============================================================================

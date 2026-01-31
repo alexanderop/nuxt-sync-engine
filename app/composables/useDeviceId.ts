@@ -37,7 +37,7 @@ export function useDeviceId() {
         // Generate a new UUID
         id = crypto.randomUUID()
         localStorage.setItem(deviceIdKey, id)
-        console.log('[device] Generated new device ID:', `${id.slice(0, 8)}...`)
+        console.info('[device] Generated new device ID:', `${id.slice(0, 8)}...`)
       }
       return id
     }

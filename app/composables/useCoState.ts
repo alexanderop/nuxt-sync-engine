@@ -106,10 +106,12 @@ export function useCoState<T extends Record<string, unknown>>(
   tableName: string,
   getId: () => string | undefined,
 ): CoStateResult<T> {
+  /* eslint-disable ts/consistent-type-assertions -- Vue ref requires explicit typing with generics */
   const data = ref<T | null>(null) as Ref<T | null>
   const status = ref<CoStateStatus>('loading') as Ref<CoStateStatus>
   const error = ref<string | null>(null) as Ref<string | null>
   const item = ref<SyncItem | null>(null) as Ref<SyncItem | null>
+  /* eslint-enable ts/consistent-type-assertions */
 
   // Load data when ID changes
   async function load() {
@@ -135,6 +137,7 @@ export function useCoState<T extends Record<string, unknown>>(
       }
       else {
         item.value = result
+        // eslint-disable-next-line ts/consistent-type-assertions -- Generic data typing
         data.value = result.data as T
         status.value = 'ready'
       }
@@ -166,6 +169,7 @@ export function useCoState<T extends Record<string, unknown>>(
 
     // Optimistic update
     item.value = newItem
+    // eslint-disable-next-line ts/consistent-type-assertions -- Generic data typing
     data.value = newData as T
 
     // Persist
@@ -247,9 +251,11 @@ export function useCoState<T extends Record<string, unknown>>(
 export function useCoStateList<T extends Record<string, unknown>>(
   tableName: string,
 ): CoStateListResult<T> {
+  /* eslint-disable ts/consistent-type-assertions -- Vue ref requires explicit typing with generics */
   const items = ref<Array<SyncItem & { data: T }>>([]) as Ref<Array<SyncItem & { data: T }>>
   const status = ref<CoStateStatus>('loading') as Ref<CoStateStatus>
   const error = ref<string | null>(null) as Ref<string | null>
+  /* eslint-enable ts/consistent-type-assertions */
 
   // Load all items
   async function loadAll() {
@@ -259,6 +265,7 @@ export function useCoStateList<T extends Record<string, unknown>>(
     try {
       await useLocalDatabase()
       const results = getAllItems(tableName)
+      // eslint-disable-next-line ts/consistent-type-assertions -- Generic data typing
       items.value = results as Array<SyncItem & { data: T }>
       status.value = 'ready'
     }
@@ -283,6 +290,7 @@ export function useCoStateList<T extends Record<string, unknown>>(
     }
 
     // Optimistic update
+    // eslint-disable-next-line ts/consistent-type-assertions -- Generic data typing
     items.value = [newItem as SyncItem & { data: T }, ...items.value]
 
     // Persist
@@ -418,6 +426,7 @@ export async function createReactiveCoValue<T extends Record<string, unknown>>(
   const deviceId = getDeviceId()
 
   // Create a proxy that syncs on mutation
+  /* eslint-disable ts/consistent-type-assertions -- Proxy handler requires dynamic property access */
   const handler: ProxyHandler<T & { $jazz: SyncItem }> = {
     get(target, prop) {
       if (prop === '$jazz') {
@@ -448,5 +457,6 @@ export async function createReactiveCoValue<T extends Record<string, unknown>>(
   }
 
   const data = { ...item.data } as T & { $jazz: SyncItem }
+  /* eslint-enable ts/consistent-type-assertions */
   return new Proxy(data, handler)
 }

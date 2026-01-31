@@ -31,7 +31,7 @@ export default defineWebSocketHandler({
   open(peer) {
     // Subscribe to the sync channel
     peer.subscribe('sync-channel')
-    console.log(`[ws] Client connected: ${peer.id}`)
+    console.info(`[ws] Client connected: ${peer.id}`)
 
     // Send welcome message
     peer.send(
@@ -48,16 +48,16 @@ export default defineWebSocketHandler({
    */
   message(peer, message) {
     try {
-      const data = JSON.parse(message.text()) as WebSocketMessage
+      const data: WebSocketMessage = JSON.parse(message.text())
 
       switch (data.type) {
         case 'connect':
           // Client is identifying itself
-          console.log(`[ws] Client identified: ${data.deviceId}`)
+          console.info(`[ws] Client identified: ${data.deviceId}`)
           break
 
         case 'sync':
-          handleSyncMessage(peer, data as WebSocketSyncMessage)
+          handleSyncMessage(peer, data)
           break
 
         case 'ping':
@@ -66,7 +66,7 @@ export default defineWebSocketHandler({
           break
 
         default:
-          console.log(`[ws] Unknown message type: ${data.type}`)
+          console.info(`[ws] Unknown message type: ${data.type}`)
       }
     }
     catch (error) {
@@ -84,7 +84,7 @@ export default defineWebSocketHandler({
    * Called when a client disconnects.
    */
   close(peer) {
-    console.log(`[ws] Client disconnected: ${peer.id}`)
+    console.info(`[ws] Client disconnected: ${peer.id}`)
   },
 
   /**
@@ -99,7 +99,7 @@ export default defineWebSocketHandler({
  * Handle sync message - broadcast to all other clients.
  */
 function handleSyncMessage(peer: { id: string, publish: (channel: string, message: string) => void }, message: WebSocketSyncMessage) {
-  console.log(
+  console.info(
     `[ws] Broadcasting ${message.changes.length} changes for ${message.schema} from ${message.deviceId.slice(0, 8)}...`,
   )
 

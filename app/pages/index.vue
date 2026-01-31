@@ -38,7 +38,7 @@ const syncEngine = useSyncEngine({
   tableName: 'todos',
   autoSyncInterval: 30000,
   onRemoteChanges: (changes) => {
-    console.log(`[app] Received ${changes.length} remote changes`)
+    console.info(`[app] Received ${changes.length} remote changes`)
     refresh()
   },
 })

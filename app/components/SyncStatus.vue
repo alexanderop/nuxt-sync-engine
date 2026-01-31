@@ -24,33 +24,33 @@ interface Props {
   error?: string | null
 }
 
-const props = defineProps<Props>()
+const { isSyncing, isOnline, isConnected, error, lastSyncAt } = defineProps<Props>()
 
 const statusClass = computed(() => ({
-  'status-syncing': props.isSyncing,
-  'status-online': props.isOnline && props.isConnected && !props.isSyncing && !props.error,
-  'status-offline': !props.isOnline,
-  'status-disconnected': props.isOnline && !props.isConnected && !props.isSyncing,
-  'status-error': !!props.error,
+  'status-syncing': isSyncing,
+  'status-online': isOnline && isConnected && !isSyncing && !error,
+  'status-offline': !isOnline,
+  'status-disconnected': isOnline && !isConnected && !isSyncing,
+  'status-error': !!error,
 }))
 
 const statusText = computed(() => {
-  if (props.error)
+  if (error)
     return 'Sync error'
-  if (props.isSyncing)
+  if (isSyncing)
     return 'Syncing...'
-  if (!props.isOnline)
+  if (!isOnline)
     return 'Offline'
-  if (!props.isConnected)
+  if (!isConnected)
     return 'Connecting...'
   return 'Synced'
 })
 
 const lastSyncText = computed(() => {
-  if (!props.lastSyncAt || props.isSyncing)
+  if (!lastSyncAt || isSyncing)
     return ''
 
-  const diff = Date.now() - props.lastSyncAt
+  const diff = Date.now() - lastSyncAt
   if (diff < 5000)
     return 'just now'
   if (diff < 60000)

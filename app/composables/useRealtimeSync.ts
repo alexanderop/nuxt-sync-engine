@@ -36,6 +36,14 @@ export interface RealtimeSyncOptions {
 }
 
 // =============================================================================
+// HELPER FUNCTIONS
+// =============================================================================
+
+function handleError(event: Event) {
+  console.error('[ws] Error:', event)
+}
+
+// =============================================================================
 // REALTIME SYNC COMPOSABLE
 // =============================================================================
 
@@ -46,7 +54,7 @@ export interface RealtimeSyncOptions {
  * ```typescript
  * const { connect, disconnect, broadcast, isConnected } = useRealtimeSync({
  *   onChanges: (changes, schema) => {
- *     console.log(`Received ${changes.length} changes for ${schema}`);
+ *     console.info(`Received ${changes.length} changes for ${schema}`);
  *     // Apply changes to local database
  *   },
  * });
@@ -83,7 +91,7 @@ export function useRealtimeSync(options: RealtimeSyncOptions) {
    */
   function connect() {
     if (ws.value?.readyState === WebSocket.OPEN) {
-      console.log('[ws] Already connected')
+      console.info('[ws] Already connected')
       return
     }
 
@@ -97,13 +105,13 @@ export function useRealtimeSync(options: RealtimeSyncOptions) {
     const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:'
     const url = `${protocol}//${location.host}/_ws`
 
-    console.log('[ws] Connecting to', url)
+    console.info('[ws] Connecting to', url)
     ws.value = new WebSocket(url)
 
-    ws.value.onopen = handleOpen
-    ws.value.onclose = handleClose
-    ws.value.onerror = handleError
-    ws.value.onmessage = handleMessage
+    ws.value.addEventListener('open', handleOpen)
+    ws.value.addEventListener('close', handleClose)
+    ws.value.addEventListener('error', handleError)
+    ws.value.addEventListener('message', handleMessage)
   }
 
   /**
@@ -134,14 +142,14 @@ export function useRealtimeSync(options: RealtimeSyncOptions) {
    */
   function scheduleReconnect() {
     if (maxReconnectAttempts > 0 && reconnectAttempts.value >= maxReconnectAttempts) {
-      console.log('[ws] Max reconnect attempts reached')
+      console.info('[ws] Max reconnect attempts reached')
       return
     }
 
     reconnectAttempts.value++
     const delay = reconnectDelay * Math.min(reconnectAttempts.value, 5) // Exponential backoff, max 5x
 
-    console.log(`[ws] Reconnecting in ${delay}ms (attempt ${reconnectAttempts.value})...`)
+    console.info(`[ws] Reconnecting in ${delay}ms (attempt ${reconnectAttempts.value})...`)
 
     reconnectTimeoutId = setTimeout(() => {
       if (!isConnected.value) {
@@ -155,7 +163,7 @@ export function useRealtimeSync(options: RealtimeSyncOptions) {
   // ==========================================================================
 
   function handleOpen() {
-    console.log('[ws] Connected')
+    console.info('[ws] Connected')
     isConnected.value = true
     reconnectAttempts.value = 0
     onConnectionChange?.(true)
@@ -173,7 +181,7 @@ export function useRealtimeSync(options: RealtimeSyncOptions) {
   }
 
   function handleClose(event: CloseEvent) {
-    console.log('[ws] Disconnected:', event.code, event.reason)
+    console.info('[ws] Disconnected:', event.code, event.reason)
     isConnected.value = false
     onConnectionChange?.(false)
 
@@ -188,17 +196,13 @@ export function useRealtimeSync(options: RealtimeSyncOptions) {
     }
   }
 
-  function handleError(event: Event) {
-    console.error('[ws] Error:', event)
-  }
-
   function handleMessage(event: MessageEvent) {
     try {
-      const message = JSON.parse(event.data) as WebSocketMessage
+      const message: WebSocketMessage = JSON.parse(event.data)
 
       switch (message.type) {
         case 'sync':
-          handleSyncMessage(message as WebSocketSyncMessage)
+          handleSyncMessage(message)
           break
 
         case 'pong':
@@ -210,7 +214,7 @@ export function useRealtimeSync(options: RealtimeSyncOptions) {
           break
 
         default:
-          console.log('[ws] Unknown message type:', message.type)
+          console.info('[ws] Unknown message type:', message.type)
       }
     }
     catch (error) {
@@ -226,7 +230,7 @@ export function useRealtimeSync(options: RealtimeSyncOptions) {
       return
     }
 
-    console.log(`[ws] Received ${message.changes.length} changes for ${message.schema} from ${message.deviceId.slice(0, 8)}...`)
+    console.info(`[ws] Received ${message.changes.length} changes for ${message.schema} from ${message.deviceId.slice(0, 8)}...`)
     onChanges(message.changes, message.schema)
   }
 
@@ -268,7 +272,7 @@ export function useRealtimeSync(options: RealtimeSyncOptions) {
     }
 
     send(message)
-    console.log(`[ws] Broadcast ${changes.length} changes for ${schema}`)
+    console.info(`[ws] Broadcast ${changes.length} changes for ${schema}`)
   }
 
   // ==========================================================================

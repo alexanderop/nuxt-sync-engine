@@ -39,7 +39,7 @@ export default defineEventHandler(async (event): Promise<SyncPullResponse> => {
   // Get changes, excluding the requesting device's own changes
   const changes = getServerChangesSince(schema, since, deviceId)
 
-  console.log(
+  console.info(
     `[pull] Returning ${changes.length} changes for ${schema} since ${since} (excluding ${deviceId.slice(0, 8)}...)`,
   )
 
