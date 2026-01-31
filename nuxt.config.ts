@@ -1,3 +1,5 @@
+import tailwindcss from '@tailwindcss/vite'
+
 // https://nuxt.com/docs/api/configuration/nuxt-config
 export default defineNuxtConfig({
   // Required: Pin behavior to a specific date
@@ -9,6 +11,8 @@ export default defineNuxtConfig({
   },
 
   devtools: { enabled: true },
+
+  css: ['~/assets/css/main.css'],
 
   // Runtime configuration
   runtimeConfig: {
@@ -42,6 +46,7 @@ export default defineNuxtConfig({
 
   // Vite configuration for sql.js WASM support
   vite: {
+    plugins: [tailwindcss()],
     optimizeDeps: {
       // Include sql.js for pre-bundling to handle CommonJS->ESM conversion
       include: ['sql.js'],

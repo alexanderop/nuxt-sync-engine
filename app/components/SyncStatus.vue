@@ -26,14 +26,6 @@ interface Props {
 
 const { isSyncing, isOnline, isConnected, error, lastSyncAt } = defineProps<Props>()
 
-const statusClass = computed(() => ({
-  'status-syncing': isSyncing,
-  'status-online': isOnline && isConnected && !isSyncing && !error,
-  'status-offline': !isOnline,
-  'status-disconnected': isOnline && !isConnected && !isSyncing,
-  'status-error': !!error,
-}))
-
 const statusText = computed(() => {
   if (error)
     return 'Sync error'
@@ -59,91 +51,40 @@ const lastSyncText = computed(() => {
     return `${Math.floor(diff / 60000)}m ago`
   return `${Math.floor(diff / 3600000)}h ago`
 })
+
+const dotClass = computed(() => {
+  if (error)
+    return 'bg-red-500'
+  if (isSyncing)
+    return 'bg-accent animate-pulse'
+  if (!isOnline)
+    return 'bg-amber-500'
+  if (!isConnected)
+    return 'bg-amber-500 animate-pulse'
+  return 'bg-green-500 shadow-[0_0_0_2px_rgba(34,197,94,0.2)]'
+})
+
+const containerClass = computed(() => {
+  if (error)
+    return 'bg-red-500/10 text-red-400'
+  if (!isOnline)
+    return 'bg-amber-500/10 text-amber-400'
+  return 'bg-card text-text-base/60'
+})
 </script>
 
 <template>
-  <div class="sync-status" :class="statusClass">
-    <span class="status-dot" />
-    <span class="status-text">{{ statusText }}</span>
-    <span v-if="lastSyncText" class="last-sync">
+  <div
+    class="flex items-center gap-2 rounded-full px-3 py-2 text-sm transition-all"
+    :class="containerClass"
+  >
+    <span
+      class="size-2 shrink-0 rounded-full transition-all"
+      :class="dotClass"
+    />
+    <span class="font-medium">{{ statusText }}</span>
+    <span v-if="lastSyncText" class="text-xs text-text-base/40">
       {{ lastSyncText }}
     </span>
   </div>
 </template>
-
-<style scoped>
-.sync-status {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  font-size: 0.875rem;
-  color: #6b7280;
-  padding: 0.5rem 0.75rem;
-  border-radius: 9999px;
-  background: #f3f4f6;
-  transition: all 0.2s ease;
-}
-
-.status-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: #9ca3af;
-  transition: all 0.2s ease;
-}
-
-.status-text {
-  font-weight: 500;
-}
-
-.last-sync {
-  color: #9ca3af;
-  font-size: 0.75rem;
-}
-
-/* Status variants */
-.status-online .status-dot {
-  background: #22c55e;
-  box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.2);
-}
-
-.status-syncing .status-dot {
-  background: #3b82f6;
-  animation: pulse 1.5s ease-in-out infinite;
-}
-
-.status-offline {
-  background: #fef3c7;
-  color: #92400e;
-}
-
-.status-offline .status-dot {
-  background: #f59e0b;
-}
-
-.status-disconnected .status-dot {
-  background: #f59e0b;
-  animation: pulse 2s ease-in-out infinite;
-}
-
-.status-error {
-  background: #fef2f2;
-  color: #dc2626;
-}
-
-.status-error .status-dot {
-  background: #ef4444;
-}
-
-@keyframes pulse {
-  0%,
-  100% {
-    opacity: 1;
-    transform: scale(1);
-  }
-  50% {
-    opacity: 0.6;
-    transform: scale(1.2);
-  }
-}
-</style>

@@ -77,11 +77,16 @@ function handleDelete() {
 </script>
 
 <template>
-  <li class="todo-item" :class="{ completed: todo.data.completed, editing: isEditing }">
+  <li
+    class="group flex items-center gap-3 border-b border-border px-4 py-4 transition-colors last:border-b-0 hover:bg-fill/50"
+    :class="{ 'opacity-60': todo.data.completed, 'bg-card-muted/20': isEditing }"
+  >
     <!-- Checkbox -->
     <button
-      class="checkbox"
-      :class="{ checked: todo.data.completed }"
+      class="flex size-6 shrink-0 items-center justify-center rounded-full border-2 transition-all"
+      :class="todo.data.completed
+        ? 'border-accent bg-accent'
+        : 'border-border bg-transparent hover:border-accent'"
       :aria-label="todo.data.completed ? 'Mark as incomplete' : 'Mark as complete'"
       @click="handleToggle"
     >
@@ -90,7 +95,7 @@ function handleDelete() {
         xmlns="http://www.w3.org/2000/svg"
         viewBox="0 0 20 20"
         fill="currentColor"
-        class="check-icon"
+        class="size-3.5 text-fill"
       >
         <path
           fill-rule="evenodd"
@@ -101,30 +106,38 @@ function handleDelete() {
     </button>
 
     <!-- Text / Edit input -->
-    <div class="content">
+    <div class="min-w-0 flex-1">
       <input
         v-if="isEditing"
         ref="editInput"
         v-model="editText"
-        class="edit-input"
+        class="w-full rounded-md border-2 border-accent bg-card px-3 py-2 text-text-base outline-none"
         type="text"
         @blur="handleEditBlur"
         @keydown.enter="handleEditSubmit"
         @keydown.escape="handleEditCancel"
       >
-      <span v-else class="text" @dblclick="startEdit">
+      <span
+        v-else
+        class="cursor-text break-words text-text-base"
+        :class="{ 'line-through text-text-base/50': todo.data.completed }"
+        @dblclick="startEdit"
+      >
         {{ todo.data.text }}
       </span>
     </div>
 
     <!-- Device indicator -->
-    <span class="device-id" :title="`Last edited by: ${todo.deviceId}`">
+    <span
+      class="shrink-0 rounded bg-fill px-1.5 py-0.5 font-mono text-[10px] text-text-base/40"
+      :title="`Last edited by: ${todo.deviceId}`"
+    >
       {{ todo.deviceId.slice(0, 4) }}
     </span>
 
     <!-- Delete button -->
     <button
-      class="delete-btn"
+      class="flex size-7 shrink-0 items-center justify-center rounded-md text-text-base/40 opacity-0 transition-all group-hover:opacity-100 hover:bg-accent/20 hover:text-accent"
       aria-label="Delete todo"
       @click="handleDelete"
     >
@@ -132,7 +145,7 @@ function handleDelete() {
         xmlns="http://www.w3.org/2000/svg"
         viewBox="0 0 20 20"
         fill="currentColor"
-        class="delete-icon"
+        class="size-4"
       >
         <path
           d="M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z"
@@ -141,130 +154,3 @@ function handleDelete() {
     </button>
   </li>
 </template>
-
-<style scoped>
-.todo-item {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 1rem;
-  border-bottom: 1px solid #e5e7eb;
-  transition: background-color 0.15s ease;
-}
-
-.todo-item:hover {
-  background: #f9fafb;
-}
-
-.todo-item:last-child {
-  border-bottom: none;
-}
-
-.todo-item.completed {
-  opacity: 0.6;
-}
-
-.todo-item.editing {
-  background: #eff6ff;
-}
-
-/* Checkbox */
-.checkbox {
-  width: 24px;
-  height: 24px;
-  border: 2px solid #d1d5db;
-  border-radius: 50%;
-  background: white;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.15s ease;
-  flex-shrink: 0;
-}
-
-.checkbox:hover {
-  border-color: #3b82f6;
-}
-
-.checkbox.checked {
-  background: #3b82f6;
-  border-color: #3b82f6;
-}
-
-.check-icon {
-  width: 14px;
-  height: 14px;
-  color: white;
-}
-
-/* Content */
-.content {
-  flex: 1;
-  min-width: 0;
-}
-
-.text {
-  font-size: 1rem;
-  color: #1f2937;
-  cursor: text;
-  word-break: break-word;
-}
-
-.completed .text {
-  text-decoration: line-through;
-  color: #9ca3af;
-}
-
-.edit-input {
-  width: 100%;
-  padding: 0.5rem;
-  font-size: 1rem;
-  border: 2px solid #3b82f6;
-  border-radius: 0.375rem;
-  outline: none;
-  background: white;
-}
-
-/* Device indicator */
-.device-id {
-  font-size: 0.625rem;
-  color: #9ca3af;
-  font-family: monospace;
-  background: #f3f4f6;
-  padding: 0.125rem 0.375rem;
-  border-radius: 0.25rem;
-  flex-shrink: 0;
-}
-
-/* Delete button */
-.delete-btn {
-  width: 28px;
-  height: 28px;
-  border: none;
-  background: transparent;
-  color: #9ca3af;
-  cursor: pointer;
-  border-radius: 0.375rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.15s ease;
-  flex-shrink: 0;
-  opacity: 0;
-}
-
-.todo-item:hover .delete-btn {
-  opacity: 1;
-}
-
-.delete-btn:hover {
-  background: #fef2f2;
-  color: #ef4444;
-}
-
-.delete-icon {
-  width: 16px;
-  height: 16px;
-}
-</style>
