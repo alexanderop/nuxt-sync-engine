@@ -1,0 +1,1158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Nuxt Sync Engine - Interactive Playground</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg-primary: #0d1117;
+      --bg-secondary: #161b22;
+      --bg-tertiary: #21262d;
+      --border: #30363d;
+      --text-primary: #e6edf3;
+      --text-secondary: #8b949e;
+      --text-muted: #6e7681;
+      --accent-blue: #58a6ff;
+      --accent-green: #3fb950;
+      --accent-purple: #a371f7;
+      --accent-orange: #d29922;
+      --accent-red: #f85149;
+      --accent-cyan: #39c5cf;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      min-height: 100vh;
+      line-height: 1.5;
+    }
+
+    .container {
+      display: grid;
+      grid-template-columns: 320px 1fr;
+      grid-template-rows: 1fr auto;
+      height: 100vh;
+      gap: 1px;
+      background: var(--border);
+    }
+
+    .controls {
+      background: var(--bg-secondary);
+      padding: 20px;
+      overflow-y: auto;
+      grid-row: span 2;
+    }
+
+    .preview {
+      background: var(--bg-primary);
+      padding: 24px;
+      overflow-y: auto;
+    }
+
+    .prompt-output {
+      background: var(--bg-secondary);
+      padding: 16px 24px;
+      border-top: 1px solid var(--border);
+    }
+
+    h1 {
+      font-size: 18px;
+      font-weight: 600;
+      margin-bottom: 4px;
+      color: var(--text-primary);
+    }
+
+    .subtitle {
+      font-size: 12px;
+      color: var(--text-secondary);
+      margin-bottom: 20px;
+    }
+
+    .section {
+      margin-bottom: 24px;
+    }
+
+    .section-title {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--text-secondary);
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .section-title::before {
+      content: '';
+      width: 8px;
+      height: 8px;
+      border-radius: 2px;
+    }
+
+    .section-title.scenario::before { background: var(--accent-blue); }
+    .section-title.device::before { background: var(--accent-green); }
+    .section-title.conflict::before { background: var(--accent-orange); }
+    .section-title.sync::before { background: var(--accent-purple); }
+
+    .control-group {
+      margin-bottom: 16px;
+    }
+
+    label {
+      display: block;
+      font-size: 13px;
+      color: var(--text-secondary);
+      margin-bottom: 6px;
+    }
+
+    select, input[type="range"] {
+      width: 100%;
+      background: var(--bg-tertiary);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text-primary);
+      font-size: 13px;
+      padding: 8px 12px;
+      cursor: pointer;
+    }
+
+    select:focus, input:focus {
+      outline: none;
+      border-color: var(--accent-blue);
+    }
+
+    input[type="range"] {
+      -webkit-appearance: none;
+      height: 6px;
+      padding: 0;
+      border-radius: 3px;
+    }
+
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: var(--accent-blue);
+      cursor: pointer;
+    }
+
+    .range-value {
+      font-size: 12px;
+      color: var(--text-muted);
+      text-align: right;
+      margin-top: 4px;
+      font-family: 'SF Mono', Monaco, monospace;
+    }
+
+    .presets {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-bottom: 20px;
+    }
+
+    .preset-btn {
+      background: var(--bg-tertiary);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      color: var(--text-secondary);
+      font-size: 12px;
+      padding: 6px 12px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .preset-btn:hover {
+      border-color: var(--accent-blue);
+      color: var(--accent-blue);
+    }
+
+    .preset-btn.active {
+      background: var(--accent-blue);
+      border-color: var(--accent-blue);
+      color: white;
+    }
+
+    /* Preview Styles */
+    .diagram-container {
+      max-width: 900px;
+      margin: 0 auto;
+    }
+
+    .diagram-title {
+      font-size: 20px;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+
+    .diagram-subtitle {
+      color: var(--text-secondary);
+      font-size: 14px;
+      margin-bottom: 24px;
+    }
+
+    .architecture {
+      display: grid;
+      grid-template-columns: 1fr 120px 1fr;
+      gap: 16px;
+      margin-bottom: 32px;
+    }
+
+    .device-box {
+      background: var(--bg-secondary);
+      border: 2px solid var(--border);
+      border-radius: 12px;
+      padding: 16px;
+      position: relative;
+    }
+
+    .device-box.active {
+      border-color: var(--accent-blue);
+      box-shadow: 0 0 20px rgba(88, 166, 255, 0.1);
+    }
+
+    .device-box.conflict {
+      border-color: var(--accent-orange);
+      box-shadow: 0 0 20px rgba(210, 153, 34, 0.1);
+    }
+
+    .device-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+
+    .device-icon {
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+    }
+
+    .device-icon.client-a { background: linear-gradient(135deg, #58a6ff, #1f6feb); }
+    .device-icon.client-b { background: linear-gradient(135deg, #3fb950, #238636); }
+    .device-icon.server { background: linear-gradient(135deg, #a371f7, #8957e5); }
+
+    .device-name {
+      font-weight: 600;
+      font-size: 14px;
+    }
+
+    .device-status {
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+
+    .db-box {
+      background: var(--bg-tertiary);
+      border-radius: 8px;
+      padding: 12px;
+      margin-top: 8px;
+    }
+
+    .db-label {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--text-muted);
+      margin-bottom: 8px;
+    }
+
+    .db-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 6px 8px;
+      background: var(--bg-secondary);
+      border-radius: 4px;
+      margin-bottom: 4px;
+      font-size: 12px;
+      font-family: 'SF Mono', Monaco, monospace;
+    }
+
+    .db-item.deleted {
+      opacity: 0.4;
+      text-decoration: line-through;
+    }
+
+    .db-item.new {
+      background: rgba(63, 185, 80, 0.15);
+      border: 1px solid rgba(63, 185, 80, 0.3);
+    }
+
+    .db-item.conflict {
+      background: rgba(210, 153, 34, 0.15);
+      border: 1px solid rgba(210, 153, 34, 0.3);
+    }
+
+    .db-item .timestamp {
+      color: var(--text-muted);
+      font-size: 10px;
+    }
+
+    /* Server/Sync Column */
+    .sync-column {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .sync-arrow {
+      width: 100%;
+      height: 24px;
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .sync-arrow::before {
+      content: '';
+      position: absolute;
+      width: 100%;
+      height: 2px;
+      background: var(--border);
+    }
+
+    .sync-arrow.active::before {
+      background: var(--accent-blue);
+      animation: pulse 1s infinite;
+    }
+
+    .sync-arrow.push::after,
+    .sync-arrow.pull::after {
+      content: '';
+      position: absolute;
+      width: 0;
+      height: 0;
+      border: 6px solid transparent;
+    }
+
+    .sync-arrow.push::after {
+      right: 0;
+      border-left-color: var(--accent-blue);
+    }
+
+    .sync-arrow.pull::after {
+      left: 0;
+      border-right-color: var(--accent-green);
+    }
+
+    .sync-label {
+      font-size: 10px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+
+    /* Timeline */
+    .timeline {
+      background: var(--bg-secondary);
+      border-radius: 12px;
+      padding: 20px;
+      margin-top: 24px;
+    }
+
+    .timeline-title {
+      font-size: 14px;
+      font-weight: 600;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .timeline-steps {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .timeline-step {
+      display: flex;
+      gap: 12px;
+      align-items: flex-start;
+    }
+
+    .step-number {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      background: var(--bg-tertiary);
+      border: 2px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      font-weight: 600;
+      flex-shrink: 0;
+    }
+
+    .step-number.active {
+      background: var(--accent-blue);
+      border-color: var(--accent-blue);
+      color: white;
+    }
+
+    .step-number.complete {
+      background: var(--accent-green);
+      border-color: var(--accent-green);
+      color: white;
+    }
+
+    .step-content {
+      flex: 1;
+    }
+
+    .step-title {
+      font-size: 13px;
+      font-weight: 500;
+      margin-bottom: 2px;
+    }
+
+    .step-desc {
+      font-size: 12px;
+      color: var(--text-secondary);
+    }
+
+    /* Conflict Resolution Box */
+    .conflict-box {
+      background: rgba(210, 153, 34, 0.1);
+      border: 1px solid rgba(210, 153, 34, 0.3);
+      border-radius: 8px;
+      padding: 16px;
+      margin-top: 16px;
+    }
+
+    .conflict-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--accent-orange);
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .conflict-resolution {
+      font-size: 12px;
+      color: var(--text-secondary);
+      line-height: 1.6;
+    }
+
+    .conflict-code {
+      background: var(--bg-tertiary);
+      border-radius: 4px;
+      padding: 8px 12px;
+      margin-top: 8px;
+      font-family: 'SF Mono', Monaco, monospace;
+      font-size: 11px;
+      color: var(--accent-cyan);
+    }
+
+    /* Info Cards */
+    .info-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      margin-top: 24px;
+    }
+
+    .info-card {
+      background: var(--bg-secondary);
+      border-radius: 8px;
+      padding: 14px;
+    }
+
+    .info-card-title {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--text-muted);
+      margin-bottom: 4px;
+    }
+
+    .info-card-value {
+      font-size: 18px;
+      font-weight: 600;
+      font-family: 'SF Mono', Monaco, monospace;
+    }
+
+    .info-card-value.blue { color: var(--accent-blue); }
+    .info-card-value.green { color: var(--accent-green); }
+    .info-card-value.purple { color: var(--accent-purple); }
+
+    /* Prompt Output */
+    .prompt-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+
+    .prompt-label {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--text-muted);
+    }
+
+    .copy-btn {
+      background: var(--bg-tertiary);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text-secondary);
+      font-size: 12px;
+      padding: 6px 12px;
+      cursor: pointer;
+      transition: all 0.15s;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .copy-btn:hover {
+      border-color: var(--accent-blue);
+      color: var(--accent-blue);
+    }
+
+    .copy-btn.copied {
+      background: var(--accent-green);
+      border-color: var(--accent-green);
+      color: white;
+    }
+
+    .prompt-text {
+      font-size: 13px;
+      line-height: 1.6;
+      color: var(--text-primary);
+    }
+
+    /* Metadata display */
+    .meta-table {
+      width: 100%;
+      font-size: 11px;
+      margin-top: 12px;
+    }
+
+    .meta-table th, .meta-table td {
+      text-align: left;
+      padding: 4px 8px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .meta-table th {
+      color: var(--text-muted);
+      font-weight: 500;
+    }
+
+    .meta-table td {
+      font-family: 'SF Mono', Monaco, monospace;
+      color: var(--text-secondary);
+    }
+
+    .checkbox-group {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .checkbox-label {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      cursor: pointer;
+    }
+
+    .checkbox-label input {
+      width: 16px;
+      height: 16px;
+      accent-color: var(--accent-blue);
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="controls">
+      <h1>Sync Engine Explorer</h1>
+      <p class="subtitle">Nuxt Local-First CRDT Sync</p>
+
+      <div class="presets">
+        <button class="preset-btn active" data-preset="basic">Basic Sync</button>
+        <button class="preset-btn" data-preset="conflict">Conflict</button>
+        <button class="preset-btn" data-preset="offline">Offline</button>
+        <button class="preset-btn" data-preset="realtime">Real-time</button>
+      </div>
+
+      <div class="section">
+        <div class="section-title scenario">Scenario</div>
+        <div class="control-group">
+          <label>Sync Operation</label>
+          <select id="operation">
+            <option value="create">Create new item</option>
+            <option value="update">Update existing item</option>
+            <option value="delete">Soft delete item</option>
+            <option value="conflict">Concurrent edit (conflict)</option>
+            <option value="full-sync">Full sync cycle</option>
+          </select>
+        </div>
+        <div class="control-group">
+          <label>Network State</label>
+          <select id="network">
+            <option value="online">Online (WebSocket + HTTP)</option>
+            <option value="websocket-only">WebSocket only</option>
+            <option value="http-only">HTTP only (polling)</option>
+            <option value="offline">Offline</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-title device">Devices</div>
+        <div class="control-group">
+          <label>Active Devices</label>
+          <select id="devices">
+            <option value="1">Single device</option>
+            <option value="2" selected>Two devices</option>
+            <option value="3">Three devices</option>
+          </select>
+        </div>
+        <div class="control-group">
+          <label>Initiating Device</label>
+          <select id="initiator">
+            <option value="a">Device A (laptop)</option>
+            <option value="b">Device B (phone)</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-title conflict">Conflict Settings</div>
+        <div class="control-group">
+          <label>Device A Timestamp</label>
+          <input type="range" id="timestampA" min="100" max="200" value="150">
+          <div class="range-value" id="timestampAValue">t=150</div>
+        </div>
+        <div class="control-group">
+          <label>Device B Timestamp</label>
+          <input type="range" id="timestampB" min="100" max="200" value="145">
+          <div class="range-value" id="timestampBValue">t=145</div>
+        </div>
+        <div class="control-group">
+          <label>Tiebreaker (same timestamp)</label>
+          <select id="tiebreaker">
+            <option value="deviceId">Device ID (lexicographic)</option>
+            <option value="random">Random (non-deterministic)</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-title sync">Protocol Options</div>
+        <div class="checkbox-group">
+          <label class="checkbox-label">
+            <input type="checkbox" id="showMeta" checked>
+            Show CRDT metadata
+          </label>
+          <label class="checkbox-label">
+            <input type="checkbox" id="showWire" checked>
+            Show wire format
+          </label>
+          <label class="checkbox-label">
+            <input type="checkbox" id="showTimeline" checked>
+            Show sync timeline
+          </label>
+        </div>
+      </div>
+    </div>
+
+    <div class="preview" id="preview">
+      <!-- Rendered by JS -->
+    </div>
+
+    <div class="prompt-output">
+      <div class="prompt-header">
+        <span class="prompt-label">Generated Explanation</span>
+        <button class="copy-btn" id="copyBtn">
+          <span>📋</span> Copy
+        </button>
+      </div>
+      <div class="prompt-text" id="promptText"></div>
+    </div>
+  </div>
+
+<script>
+const DEFAULTS = {
+  operation: 'create',
+  network: 'online',
+  devices: '2',
+  initiator: 'a',
+  timestampA: 150,
+  timestampB: 145,
+  tiebreaker: 'deviceId',
+  showMeta: true,
+  showWire: true,
+  showTimeline: true
+};
+
+const PRESETS = {
+  basic: {
+    operation: 'create',
+    network: 'online',
+    devices: '2',
+    initiator: 'a',
+    timestampA: 150,
+    timestampB: 145,
+    showTimeline: true
+  },
+  conflict: {
+    operation: 'conflict',
+    network: 'online',
+    devices: '2',
+    timestampA: 150,
+    timestampB: 155,
+    showMeta: true
+  },
+  offline: {
+    operation: 'update',
+    network: 'offline',
+    devices: '2',
+    initiator: 'a',
+    showTimeline: true
+  },
+  realtime: {
+    operation: 'update',
+    network: 'websocket-only',
+    devices: '3',
+    initiator: 'a',
+    showWire: true
+  }
+};
+
+const state = { ...DEFAULTS };
+
+// DOM references
+const els = {
+  operation: document.getElementById('operation'),
+  network: document.getElementById('network'),
+  devices: document.getElementById('devices'),
+  initiator: document.getElementById('initiator'),
+  timestampA: document.getElementById('timestampA'),
+  timestampB: document.getElementById('timestampB'),
+  timestampAValue: document.getElementById('timestampAValue'),
+  timestampBValue: document.getElementById('timestampBValue'),
+  tiebreaker: document.getElementById('tiebreaker'),
+  showMeta: document.getElementById('showMeta'),
+  showWire: document.getElementById('showWire'),
+  showTimeline: document.getElementById('showTimeline'),
+  preview: document.getElementById('preview'),
+  promptText: document.getElementById('promptText'),
+  copyBtn: document.getElementById('copyBtn')
+};
+
+function updateState() {
+  state.operation = els.operation.value;
+  state.network = els.network.value;
+  state.devices = els.devices.value;
+  state.initiator = els.initiator.value;
+  state.timestampA = parseInt(els.timestampA.value);
+  state.timestampB = parseInt(els.timestampB.value);
+  state.tiebreaker = els.tiebreaker.value;
+  state.showMeta = els.showMeta.checked;
+  state.showWire = els.showWire.checked;
+  state.showTimeline = els.showTimeline.checked;
+
+  els.timestampAValue.textContent = `t=${state.timestampA}`;
+  els.timestampBValue.textContent = `t=${state.timestampB}`;
+}
+
+function applyPreset(name) {
+  const preset = PRESETS[name];
+  if (!preset) return;
+
+  Object.entries(preset).forEach(([key, value]) => {
+    if (els[key]) {
+      if (typeof value === 'boolean') {
+        els[key].checked = value;
+      } else {
+        els[key].value = value;
+      }
+    }
+  });
+
+  document.querySelectorAll('.preset-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.preset === name);
+  });
+
+  updateAll();
+}
+
+function getWinner() {
+  if (state.timestampA > state.timestampB) return 'a';
+  if (state.timestampB > state.timestampA) return 'b';
+  // Tiebreaker: lexicographic device ID comparison
+  return state.tiebreaker === 'deviceId' ? 'b' : (Math.random() > 0.5 ? 'a' : 'b');
+}
+
+function renderPreview() {
+  const isConflict = state.operation === 'conflict';
+  const winner = isConflict ? getWinner() : null;
+  const isOffline = state.network === 'offline';
+  const showDeviceB = parseInt(state.devices) >= 2;
+  const showServer = state.network !== 'offline';
+
+  let html = `
+    <div class="diagram-container">
+      <div class="diagram-title">${getScenarioTitle()}</div>
+      <div class="diagram-subtitle">${getScenarioSubtitle()}</div>
+
+      <div class="architecture">
+        <!-- Device A -->
+        <div class="device-box ${state.initiator === 'a' ? 'active' : ''} ${isConflict && winner !== 'a' ? 'conflict' : ''}">
+          <div class="device-header">
+            <div class="device-icon client-a">💻</div>
+            <div>
+              <div class="device-name">Device A</div>
+              <div class="device-status">${state.initiator === 'a' ? '● Initiating change' : 'Receiving sync'}</div>
+            </div>
+          </div>
+
+          <div class="db-box">
+            <div class="db-label">sql.js (WASM) + OPFS</div>
+            ${renderDbItems('a', isConflict, winner)}
+          </div>
+
+          ${state.showMeta ? renderMetadata('a', isConflict) : ''}
+        </div>
+
+        <!-- Sync Column -->
+        <div class="sync-column">
+          ${showServer ? `
+            <div class="sync-arrow ${!isOffline ? 'active push' : ''}"></div>
+            <div class="sync-label">Push</div>
+
+            <div class="device-box" style="padding: 12px; text-align: center;">
+              <div class="device-icon server" style="margin: 0 auto 8px;">🖥️</div>
+              <div class="device-name" style="font-size: 12px;">Server</div>
+              <div class="device-status">better-sqlite3</div>
+            </div>
+
+            <div class="sync-arrow ${!isOffline ? 'active pull' : ''}"></div>
+            <div class="sync-label">Pull</div>
+          ` : `
+            <div style="text-align: center; color: var(--text-muted); font-size: 12px;">
+              ⚡ Offline<br>
+              <span style="font-size: 10px;">Changes queued</span>
+            </div>
+          `}
+        </div>
+
+        <!-- Device B -->
+        ${showDeviceB ? `
+          <div class="device-box ${state.initiator === 'b' ? 'active' : ''} ${isConflict && winner !== 'b' ? 'conflict' : ''}">
+            <div class="device-header">
+              <div class="device-icon client-b">📱</div>
+              <div>
+                <div class="device-name">Device B</div>
+                <div class="device-status">${state.initiator === 'b' ? '● Initiating change' : 'Receiving sync'}</div>
+              </div>
+            </div>
+
+            <div class="db-box">
+              <div class="db-label">sql.js (WASM) + OPFS</div>
+              ${renderDbItems('b', isConflict, winner)}
+            </div>
+
+            ${state.showMeta ? renderMetadata('b', isConflict) : ''}
+          </div>
+        ` : `<div></div>`}
+      </div>
+
+      ${isConflict ? renderConflictBox(winner) : ''}
+
+      ${state.showWire ? renderWireFormat() : ''}
+
+      ${state.showTimeline ? renderTimeline() : ''}
+
+      ${renderInfoCards()}
+    </div>
+  `;
+
+  els.preview.innerHTML = html;
+}
+
+function getScenarioTitle() {
+  const titles = {
+    'create': 'Creating a New Todo',
+    'update': 'Updating an Existing Todo',
+    'delete': 'Soft Deleting a Todo',
+    'conflict': 'Conflict Resolution (LWW)',
+    'full-sync': 'Full Sync Cycle'
+  };
+  return titles[state.operation] || 'Sync Operation';
+}
+
+function getScenarioSubtitle() {
+  const network = {
+    'online': 'WebSocket + HTTP • Real-time broadcast + periodic sync',
+    'websocket-only': 'WebSocket only • Real-time but no guaranteed delivery',
+    'http-only': 'HTTP polling • Every 30s consistency check',
+    'offline': 'Offline mode • Changes queued in local database'
+  };
+  return network[state.network];
+}
+
+function renderDbItems(device, isConflict, winner) {
+  const isInitiator = state.initiator === device;
+  const items = [
+    { id: 'todo-1', text: 'Buy groceries', completed: false, isNew: false },
+  ];
+
+  if (state.operation === 'create' && isInitiator) {
+    items.push({ id: 'todo-2', text: 'New task', completed: false, isNew: true });
+  }
+
+  if (state.operation === 'delete') {
+    items[0].deleted = isInitiator;
+  }
+
+  if (isConflict) {
+    const deviceWins = winner === device;
+    items[0].text = device === 'a' ? 'Device A edit' : 'Device B edit';
+    items[0].conflict = !deviceWins;
+    items[0].isNew = deviceWins;
+  }
+
+  return items.map(item => `
+    <div class="db-item ${item.deleted ? 'deleted' : ''} ${item.isNew ? 'new' : ''} ${item.conflict ? 'conflict' : ''}">
+      <span>${item.text}</span>
+      <span class="timestamp">t=${device === 'a' ? state.timestampA : state.timestampB}</span>
+    </div>
+  `).join('');
+}
+
+function renderMetadata(device, isConflict) {
+  const ts = device === 'a' ? state.timestampA : state.timestampB;
+  return `
+    <table class="meta-table">
+      <tr><th>id</th><td>uuid-${device}-1234</td></tr>
+      <tr><th>created_at</th><td>${ts - 100}</td></tr>
+      <tr><th>updated_at</th><td>${ts}</td></tr>
+      <tr><th>device_id</th><td>device-${device.toUpperCase()}</td></tr>
+      <tr><th>deleted</th><td>${state.operation === 'delete' && state.initiator === device ? '1' : '0'}</td></tr>
+    </table>
+  `;
+}
+
+function renderConflictBox(winner) {
+  const loser = winner === 'a' ? 'b' : 'a';
+  const winnerTs = winner === 'a' ? state.timestampA : state.timestampB;
+  const loserTs = winner === 'a' ? state.timestampB : state.timestampA;
+  const sameTimestamp = state.timestampA === state.timestampB;
+
+  return `
+    <div class="conflict-box">
+      <div class="conflict-title">⚠️ Conflict Detected → Device ${winner.toUpperCase()} Wins</div>
+      <div class="conflict-resolution">
+        ${sameTimestamp
+          ? `Both devices have the same timestamp (t=${winnerTs}). Using lexicographic device ID comparison as tiebreaker: "device-${winner.toUpperCase()}" > "device-${loser.toUpperCase()}".`
+          : `Device ${winner.toUpperCase()} has a newer timestamp (t=${winnerTs} > t=${loserTs}). Last-Write-Wins (LWW) rule applies.`
+        }
+      </div>
+      <div class="conflict-code">
+if (incoming.updated_at > existing.updated_at) return true;
+if (incoming.updated_at === existing.updated_at) {
+  return incoming.device_id > existing.device_id; // Tiebreaker
+}
+return false;
+      </div>
+    </div>
+  `;
+}
+
+function renderWireFormat() {
+  const syncItem = {
+    id: 'todo-1',
+    data: { text: state.operation === 'create' ? 'New task' : 'Updated task', completed: false },
+    createdAt: state.timestampA - 100,
+    updatedAt: state.timestampA,
+    deviceId: `device-${state.initiator.toUpperCase()}`,
+    deleted: state.operation === 'delete'
+  };
+
+  return `
+    <div class="timeline" style="margin-top: 24px;">
+      <div class="timeline-title">📡 Wire Format (SyncItem)</div>
+      <div class="conflict-code" style="margin: 0;">
+{
+  "type": "sync",
+  "schema": "todos",
+  "deviceId": "${syncItem.deviceId}",
+  "changes": [{
+    "id": "${syncItem.id}",
+    "data": ${JSON.stringify(syncItem.data)},
+    "createdAt": ${syncItem.createdAt},
+    "updatedAt": ${syncItem.updatedAt},
+    "deviceId": "${syncItem.deviceId}",
+    "deleted": ${syncItem.deleted}
+  }]
+}
+      </div>
+    </div>
+  `;
+}
+
+function renderTimeline() {
+  const steps = getTimelineSteps();
+
+  return `
+    <div class="timeline">
+      <div class="timeline-title">📋 Sync Timeline</div>
+      <div class="timeline-steps">
+        ${steps.map((step, i) => `
+          <div class="timeline-step">
+            <div class="step-number ${step.status}">${i + 1}</div>
+            <div class="step-content">
+              <div class="step-title">${step.title}</div>
+              <div class="step-desc">${step.desc}</div>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+  `;
+}
+
+function getTimelineSteps() {
+  const base = [
+    { title: 'User Action', desc: `User ${getActionVerb()} on Device ${state.initiator.toUpperCase()}`, status: 'complete' },
+    { title: 'Local DB Update', desc: 'Optimistic update to sql.js with CRDT metadata', status: 'complete' },
+  ];
+
+  if (state.network === 'offline') {
+    base.push({ title: 'Queue for Sync', desc: 'Change stored locally, will sync when online', status: 'active' });
+    return base;
+  }
+
+  if (state.network === 'online' || state.network === 'websocket-only') {
+    base.push({ title: 'WebSocket Broadcast', desc: 'Real-time push to all connected clients', status: 'complete' });
+  }
+
+  if (state.network === 'online' || state.network === 'http-only') {
+    base.push({ title: 'HTTP Push', desc: 'POST /api/sync/push with changes since lastSyncAt', status: 'complete' });
+    base.push({ title: 'HTTP Pull', desc: 'GET /api/sync/pull for other devices\' changes', status: 'active' });
+  }
+
+  if (state.operation === 'conflict') {
+    base.push({ title: 'Conflict Resolution', desc: `LWW applied: Device ${getWinner().toUpperCase()} wins`, status: 'complete' });
+  }
+
+  base.push({ title: 'Persist', desc: 'Write database to OPFS, update lastSyncAt', status: '' });
+
+  return base;
+}
+
+function getActionVerb() {
+  return { create: 'creates a todo', update: 'updates a todo', delete: 'deletes a todo', conflict: 'edits a todo', 'full-sync': 'triggers sync' }[state.operation];
+}
+
+function renderInfoCards() {
+  return `
+    <div class="info-grid">
+      <div class="info-card">
+        <div class="info-card-title">Protocol</div>
+        <div class="info-card-value blue">v1.0.0</div>
+      </div>
+      <div class="info-card">
+        <div class="info-card-title">Sync Interval</div>
+        <div class="info-card-value green">30s</div>
+      </div>
+      <div class="info-card">
+        <div class="info-card-title">Strategy</div>
+        <div class="info-card-value purple">LWW</div>
+      </div>
+    </div>
+  `;
+}
+
+function updatePrompt() {
+  const parts = [];
+
+  parts.push(`This demonstrates a ${state.operation.replace('-', ' ')} operation in the Nuxt Sync Engine.`);
+
+  if (state.operation === 'conflict') {
+    const winner = getWinner();
+    const sameTs = state.timestampA === state.timestampB;
+    parts.push(`Two devices made concurrent edits. Device ${winner.toUpperCase()} wins because ${sameTs ? 'its device ID is lexicographically greater (deterministic tiebreaker)' : 'it has a newer timestamp (Last-Write-Wins)'}.`);
+  }
+
+  if (state.network !== DEFAULTS.network) {
+    const networkDesc = {
+      'websocket-only': 'only WebSocket is used (no guaranteed delivery)',
+      'http-only': 'only HTTP polling is used (every 30s)',
+      'offline': 'the device is offline and changes are queued locally'
+    };
+    parts.push(`In this scenario, ${networkDesc[state.network]}.`);
+  }
+
+  if (state.devices !== DEFAULTS.devices) {
+    parts.push(`${state.devices} devices are actively syncing.`);
+  }
+
+  parts.push('The engine uses CRDT metadata (id, createdAt, updatedAt, deviceId, deleted) on every record. Conflict resolution is deterministic: higher timestamp wins, with device ID as tiebreaker for equal timestamps.');
+
+  els.promptText.textContent = parts.join(' ');
+}
+
+function updateAll() {
+  updateState();
+  renderPreview();
+  updatePrompt();
+}
+
+// Event listeners
+document.querySelectorAll('.preset-btn').forEach(btn => {
+  btn.addEventListener('click', () => applyPreset(btn.dataset.preset));
+});
+
+Object.values(els).forEach(el => {
+  if (el && (el.tagName === 'SELECT' || el.tagName === 'INPUT')) {
+    el.addEventListener('change', updateAll);
+    el.addEventListener('input', updateAll);
+  }
+});
+
+els.copyBtn.addEventListener('click', async () => {
+  await navigator.clipboard.writeText(els.promptText.textContent);
+  els.copyBtn.classList.add('copied');
+  els.copyBtn.innerHTML = '<span>✓</span> Copied!';
+  setTimeout(() => {
+    els.copyBtn.classList.remove('copied');
+    els.copyBtn.innerHTML = '<span>📋</span> Copy';
+  }, 2000);
+});
+
+// Initial render
+updateAll();
+</script>
+</body>
+</html>
