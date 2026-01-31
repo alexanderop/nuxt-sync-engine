@@ -3,6 +3,7 @@
  * ======================
  *
  * SQLite database for the sync server using better-sqlite3.
+ * Auto-imported by Nitro in all server routes.
  *
  * > **What Jazz Does Better**
  * >
@@ -17,6 +18,7 @@
 
 import type { SyncItem } from '../../shared/types'
 import { mkdir } from 'node:fs/promises'
+import { dirname } from 'node:path'
 import Database from 'better-sqlite3'
 
 // =============================================================================
@@ -32,11 +34,14 @@ export async function getDatabase(): Promise<Database.Database> {
   if (db)
     return db
 
+  const config = useRuntimeConfig()
+  const dbPath = (config.databasePath as string) || 'data/sync.db'
+
   // Create data directory
-  await mkdir('data', { recursive: true })
+  await mkdir(dirname(dbPath), { recursive: true })
 
   // Initialize database with WAL mode for performance
-  db = new Database('data/sync.db')
+  db = new Database(dbPath)
   db.pragma('journal_mode = WAL')
   db.pragma('synchronous = NORMAL')
   db.pragma('foreign_keys = ON')
@@ -88,8 +93,9 @@ export async function getDatabase(): Promise<Database.Database> {
 
 /**
  * Get changes since a timestamp, excluding a specific device.
+ * Named differently from client-side getChangesSince to avoid auto-import collision.
  */
-export function getChangesSince(
+export function getServerChangesSince(
   tableName: string,
   since: number,
   excludeDeviceId?: string,

@@ -15,8 +15,6 @@
  * > We use a simple UUID stored in localStorage.
  */
 
-const DEVICE_ID_KEY = 'sync-engine-device-id'
-
 /**
  * Composable for managing device identity.
  *
@@ -27,15 +25,18 @@ const DEVICE_ID_KEY = 'sync-engine-device-id'
  * ```
  */
 export function useDeviceId() {
+  const appConfig = useAppConfig()
+  const deviceIdKey = appConfig.storage.deviceIdKey
+
   // Use Nuxt's useState for SSR-safe state
   const deviceId = useState<string>('deviceId', () => {
     // Only run on client side
     if (import.meta.client) {
-      let id = localStorage.getItem(DEVICE_ID_KEY)
+      let id = localStorage.getItem(deviceIdKey)
       if (!id) {
         // Generate a new UUID
         id = crypto.randomUUID()
-        localStorage.setItem(DEVICE_ID_KEY, id)
+        localStorage.setItem(deviceIdKey, id)
         console.log('[device] Generated new device ID:', `${id.slice(0, 8)}...`)
       }
       return id
@@ -47,10 +48,10 @@ export function useDeviceId() {
   // Ensure device ID is set on client mount
   onMounted(() => {
     if (!deviceId.value) {
-      let id = localStorage.getItem(DEVICE_ID_KEY)
+      let id = localStorage.getItem(deviceIdKey)
       if (!id) {
         id = crypto.randomUUID()
-        localStorage.setItem(DEVICE_ID_KEY, id)
+        localStorage.setItem(deviceIdKey, id)
       }
       deviceId.value = id
     }
@@ -68,10 +69,13 @@ export function getDeviceId(): string {
     throw new Error('getDeviceId() can only be called on the client')
   }
 
-  let id = localStorage.getItem(DEVICE_ID_KEY)
+  const appConfig = useAppConfig()
+  const deviceIdKey = appConfig.storage.deviceIdKey
+
+  let id = localStorage.getItem(deviceIdKey)
   if (!id) {
     id = crypto.randomUUID()
-    localStorage.setItem(DEVICE_ID_KEY, id)
+    localStorage.setItem(deviceIdKey, id)
   }
   return id
 }
@@ -84,7 +88,10 @@ export function resetDeviceId(): string {
     throw new Error('resetDeviceId() can only be called on the client')
   }
 
+  const appConfig = useAppConfig()
+  const deviceIdKey = appConfig.storage.deviceIdKey
+
   const id = crypto.randomUUID()
-  localStorage.setItem(DEVICE_ID_KEY, id)
+  localStorage.setItem(deviceIdKey, id)
   return id
 }

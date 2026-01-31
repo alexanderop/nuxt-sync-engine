@@ -16,7 +16,6 @@
  */
 
 import type { SyncPullResponse } from '../../../shared/types'
-import { getChangesSince, getDatabase } from '../../database'
 
 export default defineEventHandler(async (event): Promise<SyncPullResponse> => {
   const query = getQuery(event)
@@ -38,7 +37,7 @@ export default defineEventHandler(async (event): Promise<SyncPullResponse> => {
   await getDatabase()
 
   // Get changes, excluding the requesting device's own changes
-  const changes = getChangesSince(schema, since, deviceId)
+  const changes = getServerChangesSince(schema, since, deviceId)
 
   console.log(
     `[pull] Returning ${changes.length} changes for ${schema} since ${since} (excluding ${deviceId.slice(0, 8)}...)`,

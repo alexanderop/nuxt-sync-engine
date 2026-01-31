@@ -1,5 +1,3 @@
-import { getDatabase } from '../database'
-
 export default defineEventHandler(async () => {
   try {
     const db = await getDatabase()

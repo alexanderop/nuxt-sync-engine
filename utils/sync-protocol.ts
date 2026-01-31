@@ -1,16 +1,9 @@
 /**
- * Sync Protocol Types & Helpers
- * =============================
+ * Sync Protocol Helpers
+ * =====================
  *
- * This file defines the sync protocol inspired by Jazz's sophisticated
- * sync mechanism. We simplify Jazz's 4-message protocol for teaching:
- *
- * | Jazz         | Our Version | Purpose                    |
- * |--------------|-------------|----------------------------|
- * | Load         | `want`      | Request data               |
- * | KnownState   | `have`      | Advertise what we have     |
- * | NewContent   | `changes`   | Send actual data           |
- * | Done         | `ack`       | Confirm sync complete      |
+ * Domain types and helper functions for the sync protocol.
+ * Wire format types are in shared/types/index.ts.
  *
  * > **What Jazz Does Better**
  * >
@@ -25,7 +18,7 @@
  */
 
 // =============================================================================
-// CORE DATA TYPES
+// DOMAIN TYPES
 // =============================================================================
 
 /**
@@ -64,174 +57,6 @@ export interface TodoRow {
   updated_at: number
   deleted: number // 0 or 1
   device_id: string
-}
-
-// =============================================================================
-// JAZZ-INSPIRED SYNC PROTOCOL
-// =============================================================================
-
-/**
- * Sync message types inspired by Jazz's protocol.
- *
- * Jazz uses: Load, KnownState, NewContent, Done
- * We simplify to: want, have, changes, ack
- */
-export type SyncMessageType = 'want' | 'have' | 'changes' | 'ack'
-
-/**
- * Base message structure for sync protocol.
- */
-export interface SyncMessageBase {
-  /** Message type */
-  type: SyncMessageType
-  /** Device ID of sender */
-  deviceId: string
-  /** Message timestamp */
-  timestamp: number
-  /** Schema/table being synced */
-  schema: string
-}
-
-/**
- * "want" message - Request data (like Jazz's Load).
- *
- * Sent by a client to request data for a schema.
- * Server responds with "have" message showing its state.
- */
-export interface WantMessage extends SyncMessageBase {
-  type: 'want'
-  /** Optional: specific ID to request */
-  id?: string
-  /** Request changes since this timestamp */
-  since?: number
-}
-
-/**
- * "have" message - Advertise known state (like Jazz's KnownState).
- *
- * Sent in response to "want" or proactively to show current state.
- *
- * > **What Jazz Does Better**
- * >
- * > Jazz's KnownState message contains:
- * > ```typescript
- * > {
- * >   id: CoValueID,
- * >   header: boolean,
- * >   sessions: {
- * >     [sessionId: SessionID]: number // transaction count
- * >   }
- * > }
- * > ```
- * > This allows syncing only the exact missing transactions.
- * > We just use a single timestamp, which is less efficient.
- */
-export interface HaveMessage extends SyncMessageBase {
-  type: 'have'
-  /** Our last sync timestamp */
-  lastSyncAt: number
-  /** Number of items we have (for debugging) */
-  count?: number
-}
-
-/**
- * "changes" message - Send actual data (like Jazz's NewContent).
- *
- * Contains the actual changes being synced.
- *
- * > **What Jazz Does Better**
- * >
- * > Jazz's NewContent is a transaction with:
- * > - Session ID + transaction index
- * > - Cryptographic signature
- * > - Encrypted payload (optional)
- * > - Causal dependencies
- * >
- * > We just send raw JSON data.
- */
-export interface ChangesMessage extends SyncMessageBase {
-  type: 'changes'
-  /** The actual data */
-  items: Todo[]
-  /** Server timestamp for these changes */
-  syncedAt: number
-}
-
-/**
- * "ack" message - Confirm receipt (like Jazz's Done).
- *
- * Sent to confirm successful receipt of changes.
- */
-export interface AckMessage extends SyncMessageBase {
-  type: 'ack'
-  /** Timestamp we're acknowledging up to */
-  syncedAt: number
-  /** Number of items received */
-  count: number
-}
-
-/**
- * Union of all sync message types.
- */
-export type SyncMessage = WantMessage | HaveMessage | ChangesMessage | AckMessage
-
-// =============================================================================
-// HTTP API TYPES (Simplified REST interface)
-// =============================================================================
-
-/**
- * Payload sent from client to server when pushing changes.
- */
-export interface SyncPushPayload {
-  device_id: string
-  changes: Todo[]
-  last_sync_at: number
-}
-
-/**
- * Response from server after a push.
- */
-export interface SyncPushResponse {
-  synced_at: number
-  conflicts: Todo[]
-}
-
-/**
- * Response from server when pulling changes.
- */
-export interface SyncPullResponse {
-  changes: Todo[]
-  synced_at: number
-}
-
-// =============================================================================
-// WEBSOCKET MESSAGE TYPES
-// =============================================================================
-
-/**
- * WebSocket message types for real-time sync.
- */
-export type WebSocketMessageType = 'sync' | 'ping' | 'pong' | 'connected' | 'error'
-
-/**
- * WebSocket sync message - broadcasts changes to other clients.
- */
-export interface WebSocketSyncMessage {
-  type: 'sync'
-  device_id: string
-  changes: Todo[]
-}
-
-/**
- * WebSocket message union type.
- */
-export interface WebSocketMessage {
-  type: WebSocketMessageType
-  payload?: {
-    device_id?: string
-    changes?: Todo[]
-    message?: string
-  }
 }
 
 // =============================================================================

@@ -59,10 +59,11 @@ export interface RealtimeSyncOptions {
  * ```
  */
 export function useRealtimeSync(options: RealtimeSyncOptions) {
+  const config = useRuntimeConfig()
   const {
     onChanges,
     onConnectionChange,
-    reconnectDelay = 3000,
+    reconnectDelay = config.public.wsReconnectDelay,
     maxReconnectAttempts = 0,
   } = options
 
@@ -168,7 +169,7 @@ export function useRealtimeSync(options: RealtimeSyncOptions) {
       if (ws.value?.readyState === WebSocket.OPEN) {
         send({ type: 'ping', timestamp: Date.now() })
       }
-    }, 30000) // Ping every 30 seconds
+    }, config.public.wsPingInterval)
   }
 
   function handleClose(event: CloseEvent) {

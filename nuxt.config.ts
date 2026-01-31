@@ -10,6 +10,19 @@ export default defineNuxtConfig({
 
   devtools: { enabled: true },
 
+  // Runtime configuration
+  runtimeConfig: {
+    // Server-only (not exposed to client)
+    databasePath: './data/sync.db',
+
+    // Public (accessible on client via useRuntimeConfig().public)
+    public: {
+      syncInterval: 30000, // Auto-sync interval (ms)
+      wsReconnectDelay: 3000, // WebSocket reconnect delay (ms)
+      wsPingInterval: 30000, // WebSocket ping interval (ms)
+    },
+  },
+
   // Nitro server configuration
   nitro: {
     // Enable WebSocket support (still experimental in Nuxt 4)

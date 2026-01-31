@@ -365,10 +365,11 @@ let globalSyncEngine: ReturnType<typeof useSyncEngine> | null = null
  * This ensures all components share the same sync state.
  */
 export function useTodoSyncEngine() {
+  const config = useRuntimeConfig()
   if (!globalSyncEngine) {
     globalSyncEngine = useSyncEngine({
       tableName: 'todos',
-      autoSyncInterval: 30000, // Sync every 30 seconds
+      autoSyncInterval: config.public.syncInterval,
     })
   }
   return globalSyncEngine

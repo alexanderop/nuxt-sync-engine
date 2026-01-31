@@ -17,7 +17,6 @@
  */
 
 import type { SyncPushRequest, SyncPushResponse } from '../../../shared/types'
-import { batchUpsert, getDatabase } from '../../database'
 
 export default defineEventHandler(async (event): Promise<SyncPushResponse> => {
   const body = await readBody<SyncPushRequest>(event)
