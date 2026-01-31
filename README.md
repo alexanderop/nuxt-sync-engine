@@ -56,11 +56,11 @@ Every synced item carries metadata for conflict resolution:
 
 ```typescript
 interface CRDTMetadata {
-  id: string          // UUID (globally unique)
-  createdAt: number   // Unix timestamp (ms)
-  updatedAt: number   // Used for LWW resolution
-  deviceId: string    // Tiebreaker when timestamps match
-  deleted: boolean    // Soft delete flag
+  id: string // UUID (globally unique)
+  createdAt: number // Unix timestamp (ms)
+  updatedAt: number // Used for LWW resolution
+  deviceId: string // Tiebreaker when timestamps match
+  deleted: boolean // Soft delete flag
 }
 ```
 
