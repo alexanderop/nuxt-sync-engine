@@ -16,6 +16,7 @@
 -->
 
 <script setup lang="ts">
+import { useDebounceFn } from '@vueuse/core'
 import type { SyncItem } from '../../shared/types'
 
 interface Props {
@@ -57,14 +58,11 @@ function handleEditSubmit() {
   isEditing.value = false
 }
 
-function handleEditBlur() {
-  // Small delay to allow for submit
-  setTimeout(() => {
-    if (isEditing.value) {
-      handleEditSubmit()
-    }
-  }, 100)
-}
+const handleEditBlur = useDebounceFn(() => {
+  if (isEditing.value) {
+    handleEditSubmit()
+  }
+}, 100)
 
 function handleEditCancel() {
   isEditing.value = false

@@ -16,6 +16,8 @@
 -->
 
 <script setup lang="ts">
+import { useTimeAgo } from '@vueuse/core'
+
 interface Props {
   isOnline: boolean
   isSyncing: boolean
@@ -24,50 +26,44 @@ interface Props {
   error?: string | null
 }
 
-const { isSyncing, isOnline, isConnected, error, lastSyncAt } = defineProps<Props>()
+const props = defineProps<Props>()
 
 const statusText = computed(() => {
-  if (error)
+  if (props.error)
     return 'Sync error'
-  if (isSyncing)
+  if (props.isSyncing)
     return 'Syncing...'
-  if (!isOnline)
+  if (!props.isOnline)
     return 'Offline'
-  if (!isConnected)
+  if (!props.isConnected)
     return 'Connecting...'
   return 'Synced'
 })
 
-const lastSyncText = computed(() => {
-  if (!lastSyncAt || isSyncing)
-    return ''
+const timeAgo = useTimeAgo(() => props.lastSyncAt)
 
-  const diff = Date.now() - lastSyncAt
-  if (diff < 5000)
-    return 'just now'
-  if (diff < 60000)
-    return `${Math.floor(diff / 1000)}s ago`
-  if (diff < 3600000)
-    return `${Math.floor(diff / 60000)}m ago`
-  return `${Math.floor(diff / 3600000)}h ago`
+const lastSyncText = computed(() => {
+  if (!props.lastSyncAt || props.isSyncing)
+    return ''
+  return timeAgo.value
 })
 
 const dotClass = computed(() => {
-  if (error)
+  if (props.error)
     return 'bg-red-500'
-  if (isSyncing)
+  if (props.isSyncing)
     return 'bg-accent animate-pulse'
-  if (!isOnline)
+  if (!props.isOnline)
     return 'bg-amber-500'
-  if (!isConnected)
+  if (!props.isConnected)
     return 'bg-amber-500 animate-pulse'
   return 'bg-green-500 shadow-[0_0_0_2px_rgba(34,197,94,0.2)]'
 })
 
 const containerClass = computed(() => {
-  if (error)
+  if (props.error)
     return 'bg-red-500/10 text-red-400'
-  if (!isOnline)
+  if (!props.isOnline)
     return 'bg-amber-500/10 text-amber-400'
   return 'bg-card text-text-base/60'
 })

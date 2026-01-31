@@ -15,6 +15,8 @@
  * > We use a simple UUID stored in localStorage.
  */
 
+import { useLocalStorage } from '@vueuse/core'
+
 /**
  * Composable for managing device identity.
  *
@@ -28,36 +30,19 @@ export function useDeviceId() {
   const appConfig = useAppConfig()
   const deviceIdKey = appConfig.storage.deviceIdKey
 
-  // Use Nuxt's useState for SSR-safe state
-  const deviceId = useState<string>('deviceId', () => {
-    // Only run on client side
-    if (import.meta.client) {
-      let id = localStorage.getItem(deviceIdKey)
-      if (!id) {
-        // Generate a new UUID
-        id = crypto.randomUUID()
-        localStorage.setItem(deviceIdKey, id)
-        console.info('[device] Generated new device ID:', `${id.slice(0, 8)}...`)
-      }
-      return id
-    }
-    // Return empty string on server (will be hydrated on client)
-    return ''
+  const deviceId = useLocalStorage(deviceIdKey, '', {
+    initOnMounted: true,
   })
 
-  // Ensure device ID is set on client mount
+  // Generate ID if empty (first visit)
   onMounted(() => {
     if (!deviceId.value) {
-      let id = localStorage.getItem(deviceIdKey)
-      if (!id) {
-        id = crypto.randomUUID()
-        localStorage.setItem(deviceIdKey, id)
-      }
-      deviceId.value = id
+      deviceId.value = crypto.randomUUID()
+      console.info('[device] Generated new device ID:', `${deviceId.value.slice(0, 8)}...`)
     }
   })
 
-  return deviceId
+  return readonly(deviceId)
 }
 
 /**

@@ -17,6 +17,7 @@
  * > We use a simple broadcast model over WebSocket.
  */
 
+import { useWebSocket } from '@vueuse/core'
 import type { SyncItem, WebSocketMessage, WebSocketSyncMessage } from '../../shared/types'
 import { getDeviceId } from './useDeviceId'
 
@@ -33,14 +34,6 @@ export interface RealtimeSyncOptions {
   reconnectDelay?: number
   /** Maximum reconnect attempts (0 = infinite) */
   maxReconnectAttempts?: number
-}
-
-// =============================================================================
-// HELPER FUNCTIONS
-// =============================================================================
-
-function handleError(event: Event) {
-  console.error('[ws] Error:', event)
 }
 
 // =============================================================================
@@ -75,126 +68,52 @@ export function useRealtimeSync(options: RealtimeSyncOptions) {
     maxReconnectAttempts = 0,
   } = options
 
-  const ws = ref<WebSocket | null>(null)
-  const isConnected = ref(false)
-  const reconnectAttempts = ref(0)
-
-  let reconnectTimeoutId: ReturnType<typeof setTimeout> | null = null
-  let pingIntervalId: ReturnType<typeof setInterval> | null = null
-
-  // ==========================================================================
-  // CONNECTION MANAGEMENT
-  // ==========================================================================
-
-  /**
-   * Connect to the WebSocket server.
-   */
-  function connect() {
-    if (ws.value?.readyState === WebSocket.OPEN) {
-      console.info('[ws] Already connected')
-      return
-    }
-
-    // Clear any pending reconnect
-    if (reconnectTimeoutId) {
-      clearTimeout(reconnectTimeoutId)
-      reconnectTimeoutId = null
-    }
-
-    // Build WebSocket URL
+  // Build WebSocket URL
+  const wsUrl = computed(() => {
+    if (import.meta.server) return ''
     const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:'
-    const url = `${protocol}//${location.host}/_ws`
+    return `${protocol}//${location.host}/_ws`
+  })
 
-    console.info('[ws] Connecting to', url)
-    ws.value = new WebSocket(url)
+  const { status, send: wsSend, open, close } = useWebSocket(wsUrl, {
+    immediate: false,
+    autoReconnect: {
+      retries: maxReconnectAttempts === 0 ? -1 : maxReconnectAttempts,
+      delay: reconnectDelay,
+      onFailed() {
+        console.info('[ws] Max reconnect attempts reached')
+      },
+    },
+    heartbeat: {
+      message: () => JSON.stringify({ type: 'ping', timestamp: Date.now() }),
+      interval: config.public.wsPingInterval,
+      pongTimeout: config.public.wsPingInterval * 2,
+    },
+    onConnected() {
+      console.info('[ws] Connected')
+      onConnectionChange?.(true)
 
-    ws.value.addEventListener('open', handleOpen)
-    ws.value.addEventListener('close', handleClose)
-    ws.value.addEventListener('error', handleError)
-    ws.value.addEventListener('message', handleMessage)
-  }
+      // Send connect message
+      const deviceId = getDeviceId()
+      sendMessage({ type: 'connect', deviceId })
+    },
+    onDisconnected(_ws, event) {
+      console.info('[ws] Disconnected:', event.code, event.reason)
+      onConnectionChange?.(false)
+    },
+    onError(_ws, event) {
+      console.error('[ws] Error:', event)
+    },
+    onMessage(_ws, event) {
+      handleMessage(event)
+    },
+  })
 
-  /**
-   * Disconnect from the WebSocket server.
-   */
-  function disconnect() {
-    if (reconnectTimeoutId) {
-      clearTimeout(reconnectTimeoutId)
-      reconnectTimeoutId = null
-    }
-
-    if (pingIntervalId) {
-      clearInterval(pingIntervalId)
-      pingIntervalId = null
-    }
-
-    if (ws.value) {
-      ws.value.close()
-      ws.value = null
-    }
-
-    isConnected.value = false
-    reconnectAttempts.value = 0
-  }
-
-  /**
-   * Schedule a reconnection attempt.
-   */
-  function scheduleReconnect() {
-    if (maxReconnectAttempts > 0 && reconnectAttempts.value >= maxReconnectAttempts) {
-      console.info('[ws] Max reconnect attempts reached')
-      return
-    }
-
-    reconnectAttempts.value++
-    const delay = reconnectDelay * Math.min(reconnectAttempts.value, 5) // Exponential backoff, max 5x
-
-    console.info(`[ws] Reconnecting in ${delay}ms (attempt ${reconnectAttempts.value})...`)
-
-    reconnectTimeoutId = setTimeout(() => {
-      if (!isConnected.value) {
-        connect()
-      }
-    }, delay)
-  }
+  const isConnected = computed(() => status.value === 'OPEN')
 
   // ==========================================================================
-  // EVENT HANDLERS
+  // MESSAGE HANDLING
   // ==========================================================================
-
-  function handleOpen() {
-    console.info('[ws] Connected')
-    isConnected.value = true
-    reconnectAttempts.value = 0
-    onConnectionChange?.(true)
-
-    // Send connect message
-    const deviceId = getDeviceId()
-    send({ type: 'connect', deviceId })
-
-    // Start ping interval
-    pingIntervalId = setInterval(() => {
-      if (ws.value?.readyState === WebSocket.OPEN) {
-        send({ type: 'ping', timestamp: Date.now() })
-      }
-    }, config.public.wsPingInterval)
-  }
-
-  function handleClose(event: CloseEvent) {
-    console.info('[ws] Disconnected:', event.code, event.reason)
-    isConnected.value = false
-    onConnectionChange?.(false)
-
-    if (pingIntervalId) {
-      clearInterval(pingIntervalId)
-      pingIntervalId = null
-    }
-
-    // Only reconnect if not intentionally closed
-    if (event.code !== 1000) {
-      scheduleReconnect()
-    }
-  }
 
   function handleMessage(event: MessageEvent) {
     try {
@@ -238,16 +157,13 @@ export function useRealtimeSync(options: RealtimeSyncOptions) {
   // SEND OPERATIONS
   // ==========================================================================
 
-  /**
-   * Send a message to the server.
-   */
-  function send(message: WebSocketMessage) {
-    if (ws.value?.readyState !== WebSocket.OPEN) {
+  function sendMessage(message: WebSocketMessage) {
+    if (status.value !== 'OPEN') {
       console.warn('[ws] Cannot send, not connected')
       return
     }
 
-    ws.value.send(JSON.stringify(message))
+    wsSend(JSON.stringify(message))
   }
 
   /**
@@ -259,8 +175,7 @@ export function useRealtimeSync(options: RealtimeSyncOptions) {
    * ```
    */
   function broadcast(schema: string, changes: SyncItem[]) {
-    if (changes.length === 0)
-      return
+    if (changes.length === 0) return
 
     const deviceId = getDeviceId()
 
@@ -271,17 +186,26 @@ export function useRealtimeSync(options: RealtimeSyncOptions) {
       changes,
     }
 
-    send(message)
+    sendMessage(message)
     console.info(`[ws] Broadcast ${changes.length} changes for ${schema}`)
   }
 
   // ==========================================================================
-  // LIFECYCLE
+  // CONNECTION CONTROL
   // ==========================================================================
 
-  onUnmounted(() => {
-    disconnect()
-  })
+  function connect() {
+    if (status.value === 'OPEN') {
+      console.info('[ws] Already connected')
+      return
+    }
+    console.info('[ws] Connecting to', wsUrl.value)
+    open()
+  }
+
+  function disconnect() {
+    close()
+  }
 
   return {
     // State

@@ -17,6 +17,7 @@
  * > We use simple timestamp-based sync with last-write-wins.
  */
 
+import { useIntervalFn, useOnline } from '@vueuse/core'
 import type {
   SyncItem,
   SyncPullResponse,
@@ -86,56 +87,34 @@ export function useSyncEngine(options: SyncEngineOptions) {
     pendingChanges: 0,
   })
 
-  let syncIntervalId: ReturnType<typeof setInterval> | null = null
-
   // ==========================================================================
-  // ONLINE/OFFLINE DETECTION
+  // ONLINE/OFFLINE DETECTION (using VueUse)
   // ==========================================================================
 
-  function updateOnlineStatus() {
-    state.value.isOnline = navigator.onLine
-  }
+  const isOnline = useOnline()
 
+  watch(isOnline, (online) => {
+    state.value.isOnline = online
+    if (online) {
+      console.info('[sync] Back online, triggering sync...')
+      sync()
+    }
+    else {
+      console.info('[sync] Went offline')
+    }
+  }, { immediate: true })
+
+  // Auto-sync interval (using VueUse)
+  useIntervalFn(() => {
+    if (state.value.isOnline && !state.value.isSyncing) {
+      sync()
+    }
+  }, autoSyncInterval, { immediate: false, immediateCallback: false })
+
+  // Load last sync timestamp on mount
   onMounted(() => {
-    // Initial online status
-    updateOnlineStatus()
-
-    // Listen for online/offline events
-    window.addEventListener('online', handleOnline)
-    window.addEventListener('offline', handleOffline)
-
-    // Load last sync timestamp
     loadLastSyncAt()
-
-    // Start auto-sync if configured
-    if (autoSyncInterval > 0) {
-      syncIntervalId = setInterval(() => {
-        if (state.value.isOnline && !state.value.isSyncing) {
-          sync()
-        }
-      }, autoSyncInterval)
-    }
   })
-
-  onUnmounted(() => {
-    window.removeEventListener('online', handleOnline)
-    window.removeEventListener('offline', handleOffline)
-
-    if (syncIntervalId) {
-      clearInterval(syncIntervalId)
-    }
-  })
-
-  function handleOnline() {
-    state.value.isOnline = true
-    console.info('[sync] Back online, triggering sync...')
-    sync()
-  }
-
-  function handleOffline() {
-    state.value.isOnline = false
-    console.info('[sync] Went offline')
-  }
 
   // ==========================================================================
   // SYNC OPERATIONS

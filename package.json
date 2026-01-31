@@ -23,6 +23,7 @@
     "test:nuxt": "vitest run --config vitest.nuxt.config.ts"
   },
   "dependencies": {
+    "@vueuse/core": "^14.2.0",
     "better-sqlite3": "^11.7.0",
     "nuxt": "^4.0.0",
     "sql.js": "^1.12.0",
