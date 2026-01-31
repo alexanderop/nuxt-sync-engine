@@ -17,7 +17,6 @@
  * > We use simple timestamp-based sync with last-write-wins.
  */
 
-import { useIntervalFn, useOnline } from '@vueuse/core'
 import type {
   SyncItem,
   SyncPullResponse,
@@ -25,6 +24,7 @@ import type {
   SyncPushResponse,
   SyncState,
 } from '../../shared/types'
+import { useIntervalFn, useOnline } from '@vueuse/core'
 import { getDeviceId } from './useDeviceId'
 import {
   getChangesSince,

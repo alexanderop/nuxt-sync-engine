@@ -26,45 +26,45 @@ interface Props {
   error?: string | null
 }
 
-const props = defineProps<Props>()
+const { error, isSyncing, isOnline, isConnected, lastSyncAt } = defineProps<Props>()
 
 const statusText = computed(() => {
-  if (props.error)
+  if (error)
     return 'Sync error'
-  if (props.isSyncing)
+  if (isSyncing)
     return 'Syncing...'
-  if (!props.isOnline)
+  if (!isOnline)
     return 'Offline'
-  if (!props.isConnected)
+  if (!isConnected)
     return 'Connecting...'
   return 'Synced'
 })
 
-const timeAgo = useTimeAgo(() => props.lastSyncAt)
+const timeAgo = useTimeAgo(() => lastSyncAt)
 
 const lastSyncText = computed(() => {
-  if (!props.lastSyncAt || props.isSyncing)
+  if (!lastSyncAt || isSyncing)
     return ''
   return timeAgo.value
 })
 
 const dotClass = computed(() => {
-  if (props.error)
-    return 'bg-red-500'
-  if (props.isSyncing)
+  if (error)
+    return 'bg-error'
+  if (isSyncing)
     return 'bg-accent animate-pulse'
-  if (!props.isOnline)
-    return 'bg-amber-500'
-  if (!props.isConnected)
-    return 'bg-amber-500 animate-pulse'
-  return 'bg-green-500 shadow-[0_0_0_2px_rgba(34,197,94,0.2)]'
+  if (!isOnline)
+    return 'bg-warning'
+  if (!isConnected)
+    return 'bg-warning animate-pulse'
+  return 'bg-success shadow-[0_0_0_2px_rgba(34,197,94,0.2)]'
 })
 
 const containerClass = computed(() => {
-  if (props.error)
-    return 'bg-red-500/10 text-red-400'
-  if (!props.isOnline)
-    return 'bg-amber-500/10 text-amber-400'
+  if (error)
+    return 'bg-error/10 text-error'
+  if (!isOnline)
+    return 'bg-warning/10 text-warning'
   return 'bg-card text-text-base/60'
 })
 </script>

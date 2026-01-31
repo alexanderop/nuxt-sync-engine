@@ -185,20 +185,17 @@ onMounted(async () => {
 
       <!-- Add Todo Form -->
       <form class="mb-6 flex gap-3" @submit.prevent="handleAddTodo">
-        <input
+        <BaseInput
           v-model="newTodoText"
-          type="text"
-          class="flex-1 rounded-xl border-2 border-border bg-card px-4 py-3 text-text-base placeholder-text-base/40 outline-none transition-all focus:border-accent focus:ring-2 focus:ring-accent/20 disabled:cursor-not-allowed disabled:opacity-50"
           placeholder="What needs to be done?"
           :disabled="status === 'loading'"
-        >
-        <button
+        />
+        <BaseButton
           type="submit"
-          class="rounded-xl bg-accent px-6 py-3 font-semibold text-fill transition-all hover:-translate-y-0.5 hover:shadow-lg hover:shadow-accent/30 disabled:translate-y-0 disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none"
           :disabled="!newTodoText.trim() || status === 'loading'"
         >
           Add
-        </button>
+        </BaseButton>
       </form>
 
       <!-- Loading State -->
@@ -209,17 +206,16 @@ onMounted(async () => {
 
       <!-- Error State -->
       <div v-else-if="status === 'error'" class="py-8 text-center">
-        <p class="text-accent">Failed to load todos: {{ error }}</p>
-        <button
-          class="mt-4 rounded-lg border border-accent bg-accent/10 px-4 py-2 text-sm text-accent transition-colors hover:bg-accent/20"
-          @click="refresh"
-        >
+        <p class="text-accent">
+          Failed to load todos: {{ error }}
+        </p>
+        <BaseButton variant="secondary" class="mt-4" @click="refresh">
           Retry
-        </button>
+        </BaseButton>
       </div>
 
       <!-- Todo List -->
-      <ul v-else class="overflow-hidden rounded-2xl bg-card shadow-lg">
+      <BaseCard v-else tag="ul">
         <TodoItem
           v-for="todo in items"
           :key="todo.id"
@@ -242,18 +238,18 @@ onMounted(async () => {
             Add one above to get started.
           </p>
         </li>
-      </ul>
+      </BaseCard>
 
       <!-- Stats -->
       <div v-if="items.length > 0" class="mt-2 flex items-center justify-between px-4 py-4 text-sm text-text-base/60">
         <span>{{ completedCount }} of {{ items.length }} completed</span>
-        <button
+        <BaseButton
           v-if="completedCount > 0"
-          class="rounded-md border border-border px-3 py-1.5 text-sm transition-colors hover:bg-card hover:text-text-base"
+          variant="tertiary"
           @click="clearCompleted"
         >
           Clear completed
-        </button>
+        </BaseButton>
       </div>
 
       <!-- Footer -->
@@ -264,11 +260,11 @@ onMounted(async () => {
         <p class="mt-2 text-xs text-text-base/40">
           Device: <code class="rounded bg-card px-1.5 py-0.5 font-mono">{{ deviceId.slice(0, 8) }}...</code>
         </p>
-        <div class="mt-6 rounded-xl bg-card-muted/20 p-4 text-sm">
+        <BaseCard variant="flat" padding="md" class="mt-6 text-sm">
           <strong class="text-text-base">Want production-ready sync?</strong>
           <a href="https://jazz.tools" target="_blank" rel="noopener" class="ml-1 font-semibold text-accent hover:underline">Try Jazz</a>
           - it handles encryption, permissions, and more!
-        </div>
+        </BaseCard>
       </footer>
     </div>
   </div>

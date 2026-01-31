@@ -16,8 +16,8 @@
 -->
 
 <script setup lang="ts">
-import { useDebounceFn } from '@vueuse/core'
 import type { SyncItem } from '../../shared/types'
+import { useDebounceFn } from '@vueuse/core'
 
 interface Props {
   todo: SyncItem & { data: { text: string, completed: boolean } }
@@ -33,7 +33,7 @@ const emit = defineEmits<{
 
 const isEditing = ref(false)
 const editText = ref('')
-const editInput = useTemplateRef<HTMLInputElement>('editInput')
+const editInput = useTemplateRef<{ focus: () => void, select: () => void }>('editInput')
 
 function handleToggle() {
   emit('toggle', todo.id)
@@ -80,11 +80,9 @@ function handleDelete() {
     :class="{ 'opacity-60': todo.data.completed, 'bg-card-muted/20': isEditing }"
   >
     <!-- Checkbox -->
-    <button
-      class="flex size-6 shrink-0 items-center justify-center rounded-full border-2 transition-all"
-      :class="todo.data.completed
-        ? 'border-accent bg-accent'
-        : 'border-border bg-transparent hover:border-accent'"
+    <BaseIconButton
+      variant="checkbox"
+      :active="todo.data.completed"
       :aria-label="todo.data.completed ? 'Mark as incomplete' : 'Mark as complete'"
       @click="handleToggle"
     >
@@ -101,20 +99,19 @@ function handleDelete() {
           clip-rule="evenodd"
         />
       </svg>
-    </button>
+    </BaseIconButton>
 
     <!-- Text / Edit input -->
     <div class="min-w-0 flex-1">
-      <input
+      <BaseInput
         v-if="isEditing"
         ref="editInput"
         v-model="editText"
-        class="w-full rounded-md border-2 border-accent bg-card px-3 py-2 text-text-base outline-none"
-        type="text"
+        variant="inline"
         @blur="handleEditBlur"
         @keydown.enter="handleEditSubmit"
         @keydown.escape="handleEditCancel"
-      >
+      />
       <span
         v-else
         class="cursor-text break-words text-text-base"
@@ -126,16 +123,18 @@ function handleDelete() {
     </div>
 
     <!-- Device indicator -->
-    <span
-      class="shrink-0 rounded bg-fill px-1.5 py-0.5 font-mono text-[10px] text-text-base/40"
+    <BaseBadge
+      size="sm"
+      class="shrink-0 bg-fill font-mono text-text-base/40"
       :title="`Last edited by: ${todo.deviceId}`"
     >
       {{ todo.deviceId.slice(0, 4) }}
-    </span>
+    </BaseBadge>
 
     <!-- Delete button -->
-    <button
-      class="flex size-7 shrink-0 items-center justify-center rounded-md text-text-base/40 opacity-0 transition-all group-hover:opacity-100 hover:bg-accent/20 hover:text-accent"
+    <BaseIconButton
+      variant="action"
+      ghost
       aria-label="Delete todo"
       @click="handleDelete"
     >
@@ -149,6 +148,6 @@ function handleDelete() {
           d="M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z"
         />
       </svg>
-    </button>
+    </BaseIconButton>
   </li>
 </template>

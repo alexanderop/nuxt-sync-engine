@@ -17,8 +17,8 @@
  * > We use a simple broadcast model over WebSocket.
  */
 
-import { useWebSocket } from '@vueuse/core'
 import type { SyncItem, WebSocketMessage, WebSocketSyncMessage } from '../../shared/types'
+import { useWebSocket } from '@vueuse/core'
 import { getDeviceId } from './useDeviceId'
 
 // =============================================================================
@@ -70,7 +70,8 @@ export function useRealtimeSync(options: RealtimeSyncOptions) {
 
   // Build WebSocket URL
   const wsUrl = computed(() => {
-    if (import.meta.server) return ''
+    if (import.meta.server)
+      return ''
     const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:'
     return `${protocol}//${location.host}/_ws`
   })
@@ -175,7 +176,8 @@ export function useRealtimeSync(options: RealtimeSyncOptions) {
    * ```
    */
   function broadcast(schema: string, changes: SyncItem[]) {
-    if (changes.length === 0) return
+    if (changes.length === 0)
+      return
 
     const deviceId = getDeviceId()
 

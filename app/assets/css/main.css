@@ -7,4 +7,7 @@
   --color-card: rgb(52, 63, 96);
   --color-card-muted: rgb(138, 51, 123);
   --color-border: rgb(171, 75, 153);
+  --color-error: rgb(239, 68, 68);
+  --color-warning: rgb(245, 158, 11);
+  --color-success: rgb(34, 197, 94);
 }

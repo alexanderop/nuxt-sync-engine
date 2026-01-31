@@ -117,6 +117,7 @@ export default antfu(
       'vue/define-props-destructuring': 'warn',
       'vue/prefer-use-template-ref': 'warn',
       'vue/require-expose': 'warn',
+      'local/no-with-defaults': 'error',
 
       // Template best practices
       'vue/no-v-html': 'warn',
