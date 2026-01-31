@@ -151,7 +151,7 @@ export async function persistDatabase(): Promise<void> {
   try {
     const data = db.export()
     const writable = await fileHandle.createWritable()
-    await writable.write(data)
+    await writable.write(new Blob([data]))
     await writable.close()
   }
   catch (error) {

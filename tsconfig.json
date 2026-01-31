@@ -3,5 +3,11 @@
   "compilerOptions": {
     "strict": true,
     "noUncheckedIndexedAccess": true
-  }
+  },
+  "include": [
+    ".nuxt/nuxt.d.ts",
+    "types/**/*.d.ts",
+    "app/**/*",
+    "shared/**/*"
+  ]
 }

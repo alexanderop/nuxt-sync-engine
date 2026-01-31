@@ -308,14 +308,13 @@ export function useCoStateList<T extends Record<string, unknown>>(
 
   // Update an item
   async function update(id: string, changes: Partial<T>) {
-    const itemIndex = items.value.findIndex(i => i.id === id)
-    if (itemIndex === -1) {
+    const existing = items.value.find(i => i.id === id)
+    if (!existing) {
       throw new Error(`Item not found: ${id}`)
     }
 
     const deviceId = getDeviceId()
     const now = Date.now()
-    const existing = items.value[itemIndex]
 
     const newItem: SyncItem & { data: T } = {
       ...existing,
@@ -325,11 +324,7 @@ export function useCoStateList<T extends Record<string, unknown>>(
     }
 
     // Optimistic update
-    items.value = [
-      ...items.value.slice(0, itemIndex),
-      newItem,
-      ...items.value.slice(itemIndex + 1),
-    ]
+    items.value = items.value.map(i => i.id === id ? newItem : i)
 
     // Persist
     try {
@@ -345,17 +340,18 @@ export function useCoStateList<T extends Record<string, unknown>>(
 
   // Remove an item
   async function remove(id: string) {
-    const itemIndex = items.value.findIndex(i => i.id === id)
-    if (itemIndex === -1) {
+    const existing = items.value.find(i => i.id === id)
+    if (!existing) {
       throw new Error(`Item not found: ${id}`)
     }
 
     const deviceId = getDeviceId()
     const now = Date.now()
-    const existing = items.value[itemIndex]
 
     const deletedItem: SyncItem = {
-      ...existing,
+      id: existing.id,
+      data: existing.data,
+      createdAt: existing.createdAt,
       deleted: true,
       updatedAt: now,
       deviceId,

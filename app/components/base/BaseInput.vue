@@ -21,8 +21,10 @@ const emit = defineEmits<{
 
 const inputRef = useTemplateRef<HTMLInputElement>('inputRef')
 
-function handleInput(event: Event & { currentTarget: HTMLInputElement }) {
-  emit('update:modelValue', event.currentTarget.value)
+function handleInput(event: Event) {
+  if (event.target instanceof HTMLInputElement) {
+    emit('update:modelValue', event.target.value)
+  }
 }
 
 function focus() {

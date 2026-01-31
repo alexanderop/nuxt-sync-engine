@@ -83,7 +83,7 @@ function handleDelete() {
     <BaseIconButton
       variant="checkbox"
       :active="todo.data.completed"
-      :aria-label="todo.data.completed ? 'Mark as incomplete' : 'Mark as complete'"
+      :label="todo.data.completed ? 'Mark as incomplete' : 'Mark as complete'"
       @click="handleToggle"
     >
       <svg
@@ -135,7 +135,7 @@ function handleDelete() {
     <BaseIconButton
       variant="action"
       ghost
-      aria-label="Delete todo"
+      label="Delete todo"
       @click="handleDelete"
     >
       <svg

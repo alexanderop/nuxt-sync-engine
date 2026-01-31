@@ -3,19 +3,19 @@ const {
   variant = 'action',
   active = false,
   ghost = false,
-  ariaLabel,
+  label,
 } = defineProps<{
   variant?: 'checkbox' | 'action'
   active?: boolean
   ghost?: boolean
-  ariaLabel: string
+  label: string
 }>()
 </script>
 
 <template>
   <button
     type="button"
-    :aria-label="ariaLabel"
+    :aria-label="label"
     class="flex shrink-0 items-center justify-center transition-all"
     :class="{
       // Checkbox variant
