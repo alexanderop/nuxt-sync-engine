@@ -148,6 +148,9 @@ export function useUnsyncedTracker(
    * Get all entity IDs that need syncing.
    */
   async function getUnsyncedIds(): Promise<string[]> {
+    // Ensure pending updates are persisted before reading
+    await flushUpdates()
+
     const database = toValue(db)
     if (!database) {
       return []
@@ -165,6 +168,9 @@ export function useUnsyncedTracker(
    * Get count of entities that need syncing.
    */
   async function getUnsyncedCount(): Promise<number> {
+    // Ensure pending updates are persisted before reading
+    await flushUpdates()
+
     const database = toValue(db)
     if (!database) {
       return 0

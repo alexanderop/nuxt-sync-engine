@@ -84,9 +84,13 @@ export interface UseIDBSyncEngineReturn {
 const DEVICE_ID_STORAGE_KEY = 'idb-sync-engine-device-id'
 const IDB_SYNC_ENGINE_INJECTION_KEY = Symbol('idb-sync-engine')
 
+/** Fallback device ID for private browsing or blocked storage contexts */
+let volatileDeviceId: string | null = null
+
 /**
  * Get or create a device ID from localStorage.
  * Returns a stable identifier for this device/browser.
+ * Falls back to in-memory storage if localStorage is unavailable (e.g., private browsing).
  */
 function getOrCreateDeviceId(): string {
   // Server-side: return placeholder (will be replaced on client)
@@ -94,15 +98,25 @@ function getOrCreateDeviceId(): string {
     return ''
   }
 
-  let deviceId = localStorage.getItem(DEVICE_ID_STORAGE_KEY)
+  try {
+    let deviceId = localStorage.getItem(DEVICE_ID_STORAGE_KEY)
 
-  if (!deviceId) {
-    deviceId = crypto.randomUUID()
-    localStorage.setItem(DEVICE_ID_STORAGE_KEY, deviceId)
-    console.info('[idb-sync-engine] Generated new device ID:', `${deviceId.slice(0, 8)}...`)
+    if (!deviceId) {
+      deviceId = crypto.randomUUID()
+      localStorage.setItem(DEVICE_ID_STORAGE_KEY, deviceId)
+      console.info('[idb-sync-engine] Generated new device ID:', `${deviceId.slice(0, 8)}...`)
+    }
+
+    return deviceId
   }
-
-  return deviceId
+  catch (error) {
+    // localStorage may throw in private browsing mode or blocked storage contexts
+    console.warn('[idb-sync-engine] localStorage unavailable, using volatile device ID:', error)
+    if (!volatileDeviceId) {
+      volatileDeviceId = crypto.randomUUID()
+    }
+    return volatileDeviceId
+  }
 }
 
 /**

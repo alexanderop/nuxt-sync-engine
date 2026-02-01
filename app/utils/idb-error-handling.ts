@@ -14,20 +14,41 @@ export interface SafeIDBOptions {
   onQuotaExceeded?: () => void
 }
 
+/** Shape for structural DOMException checking */
+interface DOMExceptionLike {
+  code: number
+  name: string
+}
+
+/**
+ * Type guard to check if error has DOMException-like structure.
+ */
+function hasDOMExceptionShape(error: object): error is DOMExceptionLike {
+  return (
+    'code' in error
+    && typeof error.code === 'number'
+    && 'name' in error
+    && typeof error.name === 'string'
+  )
+}
+
 /**
  * Type guard to check if an error is a DOMException.
- * Uses structural checking to avoid type assertions.
+ * Uses instanceof check first, then falls back to structural checking
+ * based on DOMException-specific properties.
  */
 function isDOMException(error: unknown): error is DOMException {
+  // Direct instanceof check (works in browser environments)
+  if (typeof DOMException !== 'undefined' && error instanceof DOMException) {
+    return true
+  }
+
   if (typeof error !== 'object' || error === null) {
     return false
   }
 
-  // Check for DOMException-like structure
-  const hasName = 'name' in error && typeof error.name === 'string'
-  const hasMessage = 'message' in error && typeof error.message === 'string'
-
-  return hasName && hasMessage
+  // Fallback: DOMException has numeric 'code' property that Error doesn't have
+  return hasDOMExceptionShape(error)
 }
 
 /**

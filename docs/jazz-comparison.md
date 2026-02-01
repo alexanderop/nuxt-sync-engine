@@ -9,7 +9,7 @@ This document compares our simplified sync engine with Jazz, a production-grade 
 | **Complexity** | ~2k LOC | ~50k+ LOC |
 | **CRDT Model** | Entity-level LWW | Operation-based with sessions |
 | **Conflict Resolution** | Timestamp + deviceId | Causal ordering + signatures |
-| **Browser Storage** | sql.js WASM + OPFS | IndexedDB |
+| **Browser Storage** | IndexedDB | IndexedDB |
 | **Security** | None | End-to-end encryption + signatures |
 | **Sync Tracking** | Single timestamp per schema | Per-transaction per-session per-peer |
 
@@ -96,17 +96,17 @@ Client A edits → Send only to peers that need it
 
 ### 3. Storage Architecture
 
-#### Our Approach (sql.js WASM)
-- **Unique advantage:** Real SQL in the browser
-- **Same schema client/server** (isomorphic)
-- Uses OPFS for persistence
+#### Our Approach (IndexedDB)
+- Native browser API (no WASM overhead)
+- Multiple object stores for structured data
+- Good browser compatibility
 
 #### Jazz Approach (IndexedDB)
 - Native browser API (no WASM overhead)
 - 6 object stores for granular data
 - Better browser compatibility
 
-**Tradeoff:** Our sql.js approach enables SQL queries but has WASM loading overhead. Jazz trades query flexibility for native performance.
+**Note:** Both approaches now use IndexedDB. We previously used sql.js WASM but migrated to IndexedDB for simpler setup and better performance.
 
 ---
 
@@ -397,11 +397,11 @@ async function encryptData(data: object, key: CryptoKey): Promise<string> {
 
 ## Unique Advantages of Our Approach
 
-1. **sql.js WASM**: Real SQL queries in browser (Jazz uses IndexedDB)
-2. **Isomorphic schema**: Same SQL definitions client/server
-3. **OPFS persistence**: Modern storage API with better performance
-4. **Simplicity**: Easier to understand and modify
-5. **Nuxt integration**: Native Vue 3 reactivity
+1. **IndexedDB**: Native browser API with no WASM overhead
+2. **Simplicity**: Easier to understand and modify (~2k LOC vs ~50k+ LOC)
+3. **Nuxt integration**: Native Vue 3 reactivity with VueUse composables
+4. **Lightweight**: Minimal dependencies, no complex build setup
+5. **Educational**: Clear sync patterns for learning local-first architecture
 
 ---
 

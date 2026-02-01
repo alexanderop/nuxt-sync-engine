@@ -68,7 +68,7 @@ export function useCoState<T extends { id: string }>(
   collection: string,
   id: MaybeRefOrGetter<string | null | undefined>,
 ): UseCoStateReturn<T> {
-  const { db, markUnsynced, recordOperation, isReady } = useIDBSyncEngine()
+  const { db, deviceId, markUnsynced, recordOperation, isReady } = useIDBSyncEngine()
 
   /**
    * Load entity from IndexedDB.
@@ -168,7 +168,7 @@ export function useCoState<T extends { id: string }>(
           data: entityToSyncData(updatedData),
           createdAt: existingItem?.createdAt ?? now,
           updatedAt: now,
-          deviceId: existingItem?.deviceId ?? '',
+          deviceId: existingItem?.deviceId ?? deviceId.value,
           deleted: false,
         }
 

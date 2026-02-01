@@ -166,6 +166,11 @@ export async function cleanupTestDB(db: IDBDatabase): Promise<void> {
       // Database is blocked but will eventually be deleted
       // This can happen if there are still pending transactions
       console.warn(`Test database ${dbName} deletion blocked, waiting...`)
+      // Resolve after timeout to prevent tests from hanging indefinitely
+      setTimeout(() => {
+        console.warn(`Test database ${dbName} deletion timed out, continuing...`)
+        resolve()
+      }, 5000)
     }
   })
 }
