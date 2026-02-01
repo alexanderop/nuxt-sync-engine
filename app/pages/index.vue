@@ -22,49 +22,42 @@
 -->
 
 <script setup lang="ts">
-import type { SyncItem } from '../../shared/types'
+import { useCoList } from '~/composables/useIDBCoList'
+import { useIDBSyncEngine } from '~/composables/useIDBSyncEngine'
+import { useIDBSyncStatus } from '~/composables/useIDBSyncStatus'
 
-// Device ID
-const deviceId = useDeviceId()
+// Get device ID and connection status from IDB sync engine
+const { deviceId, isOnline, wsStatus } = useIDBSyncEngine()
 
-// Todo list state
-const { items, status, error, create, update, remove, refresh } = useCoStateList<{
+// Todo list state with full CRUD operations
+const { items, isLoading, error, create, update, remove, refresh } = useCoList<{
+  id: string
   text: string
   completed: boolean
 }>('todos')
 
-// Sync engine
-const syncEngine = useSyncEngine({
-  tableName: 'todos',
-  autoSyncInterval: 30000,
-  onRemoteChanges: (changes) => {
-    console.info(`[app] Received ${changes.length} remote changes`)
-    refresh()
-  },
-})
+// Sync status for UI feedback
+const { statusMessage } = useIDBSyncStatus()
 
-const syncState = computed(() => syncEngine.state.value)
-
-// Real-time sync
-const { connect, broadcast, isConnected: _isConnected } = useRealtimeSync({
-  onChanges: (changes, schema) => {
-    if (schema === 'todos') {
-      syncEngine.applyWebSocketChanges(changes)
-      refresh()
-    }
-  },
-  onConnectionChange: (connected) => {
-    syncEngine.setConnected(connected)
-  },
-})
+// Computed sync state for the SyncStatus component
+const syncState = computed(() => ({
+  isOnline: isOnline.value,
+  isSyncing: statusMessage.value.type === 'syncing',
+  isConnected: wsStatus.value === 'OPEN',
+  lastSyncAt: 0, // Not tracked in new implementation
+  error: statusMessage.value.type === 'error' ? statusMessage.value.message : null,
+}))
 
 // New todo input
 const newTodoText = ref('')
 
 // Computed
 const completedCount = computed(
-  () => items.value.filter(t => t.data.completed).length,
+  () => items.value.filter(t => t.completed).length,
 )
+
+// Loading state for compatibility with template
+const status = computed(() => isLoading.value ? 'loading' : 'ready')
 
 // Actions
 async function handleAddTodo() {
@@ -72,14 +65,8 @@ async function handleAddTodo() {
   if (!text)
     return
 
-  const todo = await create({ text, completed: false })
+  await create({ text, completed: false })
   newTodoText.value = ''
-
-  // Broadcast to other devices
-  broadcast('todos', [todo])
-
-  // Trigger sync
-  syncEngine.sync()
 }
 
 async function handleToggle(id: string) {
@@ -87,75 +74,24 @@ async function handleToggle(id: string) {
   if (!todo)
     return
 
-  await update(id, { completed: !todo.data.completed })
-
-  // Broadcast change
-  const updatedTodo = items.value.find(t => t.id === id)
-  if (updatedTodo) {
-    broadcast('todos', [updatedTodo])
-  }
-
-  syncEngine.sync()
+  await update(id, { completed: !todo.completed })
 }
 
 async function handleUpdate(id: string, text: string) {
   await update(id, { text })
-
-  const updatedTodo = items.value.find(t => t.id === id)
-  if (updatedTodo) {
-    broadcast('todos', [updatedTodo])
-  }
-
-  syncEngine.sync()
 }
 
 async function handleDelete(id: string) {
-  // Get the item before removing for broadcast
-  const todo = items.value.find(t => t.id === id)
-  if (!todo)
-    return
-
   await remove(id)
-
-  // Broadcast deletion
-  broadcast('todos', [{
-    ...todo,
-    deleted: true,
-    updatedAt: Date.now(),
-    deviceId: deviceId.value,
-  }])
-
-  syncEngine.sync()
 }
 
 async function clearCompleted() {
-  const completed = items.value.filter(t => t.data.completed)
-  const deletedItems: SyncItem[] = []
+  const completed = items.value.filter(t => t.completed)
 
   for (const todo of completed) {
     await remove(todo.id)
-    deletedItems.push({
-      ...todo,
-      deleted: true,
-      updatedAt: Date.now(),
-      deviceId: deviceId.value,
-    })
-  }
-
-  if (deletedItems.length > 0) {
-    broadcast('todos', deletedItems)
-    syncEngine.sync()
   }
 }
-
-// Initialize
-onMounted(async () => {
-  // Connect to WebSocket
-  connect()
-
-  // Initial sync
-  await syncEngine.sync()
-})
 </script>
 
 <template>
@@ -205,9 +141,9 @@ onMounted(async () => {
       </div>
 
       <!-- Error State -->
-      <div v-else-if="status === 'error'" class="py-8 text-center">
+      <div v-else-if="error" class="py-8 text-center">
         <p class="text-accent">
-          Failed to load todos: {{ error }}
+          Failed to load todos: {{ error.message }}
         </p>
         <BaseButton variant="secondary" class="mt-4" @click="refresh">
           Retry

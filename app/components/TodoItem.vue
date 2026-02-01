@@ -16,11 +16,21 @@
 -->
 
 <script setup lang="ts">
-import type { SyncItem } from '../../shared/types'
 import { useDebounceFn } from '@vueuse/core'
 
+/**
+ * Todo item with flat structure from IndexedDB.
+ * The deviceId is optional since it's not always available in the flat format.
+ */
+interface TodoData {
+  id: string
+  text: string
+  completed: boolean
+  deviceId?: string
+}
+
 interface Props {
-  todo: SyncItem & { data: { text: string, completed: boolean } }
+  todo: TodoData
 }
 
 const { todo } = defineProps<Props>()
@@ -41,7 +51,7 @@ function handleToggle() {
 
 function startEdit() {
   isEditing.value = true
-  editText.value = todo.data.text
+  editText.value = todo.text
 
   // Focus input on next tick
   nextTick(() => {
@@ -52,7 +62,7 @@ function startEdit() {
 
 function handleEditSubmit() {
   const trimmed = editText.value.trim()
-  if (trimmed && trimmed !== todo.data.text) {
+  if (trimmed && trimmed !== todo.text) {
     emit('update', todo.id, trimmed)
   }
   isEditing.value = false
@@ -66,7 +76,7 @@ const handleEditBlur = useDebounceFn(() => {
 
 function handleEditCancel() {
   isEditing.value = false
-  editText.value = todo.data.text
+  editText.value = todo.text
 }
 
 function handleDelete() {
@@ -77,17 +87,17 @@ function handleDelete() {
 <template>
   <li
     class="group flex items-center gap-3 border-b border-border px-4 py-4 transition-colors last:border-b-0 hover:bg-fill/50"
-    :class="{ 'opacity-60': todo.data.completed, 'bg-card-muted/20': isEditing }"
+    :class="{ 'opacity-60': todo.completed, 'bg-card-muted/20': isEditing }"
   >
     <!-- Checkbox -->
     <BaseIconButton
       variant="checkbox"
-      :active="todo.data.completed"
-      :label="todo.data.completed ? 'Mark as incomplete' : 'Mark as complete'"
+      :active="todo.completed"
+      :label="todo.completed ? 'Mark as incomplete' : 'Mark as complete'"
       @click="handleToggle"
     >
       <svg
-        v-if="todo.data.completed"
+        v-if="todo.completed"
         xmlns="http://www.w3.org/2000/svg"
         viewBox="0 0 20 20"
         fill="currentColor"
@@ -115,15 +125,16 @@ function handleDelete() {
       <span
         v-else
         class="cursor-text break-words text-text-base"
-        :class="{ 'line-through text-text-base/50': todo.data.completed }"
+        :class="{ 'line-through text-text-base/50': todo.completed }"
         @dblclick="startEdit"
       >
-        {{ todo.data.text }}
+        {{ todo.text }}
       </span>
     </div>
 
-    <!-- Device indicator -->
+    <!-- Device indicator (only show if deviceId is available) -->
     <BaseBadge
+      v-if="todo.deviceId"
       size="sm"
       class="shrink-0 bg-fill font-mono text-text-base/40"
       :title="`Last edited by: ${todo.deviceId}`"

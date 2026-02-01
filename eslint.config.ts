@@ -15,6 +15,8 @@ export default antfu(
       'docs/**/*.md',
       'BLOG_POST.md',
       'eslint-local-rules/**',
+      'pinia/**',
+      'jazz/**',
     ],
   },
 
