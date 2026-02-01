@@ -1,0 +1,1877 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Nuxt Sync Engine - Interactive Guide</title>
+  <style>
+    :root {
+      --bg-primary: #0d1117;
+      --bg-secondary: #161b22;
+      --bg-tertiary: #21262d;
+      --text-primary: #c9d1d9;
+      --text-secondary: #8b949e;
+      --border-color: #30363d;
+      --vue-green: #42b883;
+      --idb-orange: #f97316;
+      --ws-blue: #3b82f6;
+      --server-purple: #a855f7;
+      --crosstab-cyan: #06b6d4;
+      --conflict-red: #ef4444;
+      --success-green: #22c55e;
+      --data-flow: #fbbf24;
+    }
+
+    .light-mode {
+      --bg-primary: #ffffff;
+      --bg-secondary: #f6f8fa;
+      --bg-tertiary: #eaeef2;
+      --text-primary: #24292f;
+      --text-secondary: #57606a;
+      --border-color: #d0d7de;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      line-height: 1.6;
+      min-height: 100vh;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 2rem;
+    }
+
+    /* Header */
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 1.5rem 2rem;
+      background: var(--bg-secondary);
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    header h1 {
+      font-size: 1.5rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    header h1 .vue-icon {
+      color: var(--vue-green);
+    }
+
+    .header-actions {
+      display: flex;
+      gap: 1rem;
+      align-items: center;
+    }
+
+    .theme-toggle {
+      background: var(--bg-tertiary);
+      border: 1px solid var(--border-color);
+      color: var(--text-primary);
+      padding: 0.5rem 1rem;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.875rem;
+    }
+
+    .theme-toggle:hover {
+      background: var(--border-color);
+    }
+
+    /* Introduction */
+    .intro {
+      text-align: center;
+      padding: 2rem;
+      background: var(--bg-secondary);
+      border-radius: 12px;
+      margin-bottom: 2rem;
+    }
+
+    .intro h2 {
+      font-size: 1.25rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .intro p {
+      color: var(--text-secondary);
+      max-width: 600px;
+      margin: 0 auto;
+    }
+
+    /* Architecture Diagram */
+    .architecture-section {
+      background: var(--bg-secondary);
+      border-radius: 12px;
+      padding: 2rem;
+      margin-bottom: 2rem;
+    }
+
+    .architecture-section h3 {
+      text-align: center;
+      margin-bottom: 1.5rem;
+      font-size: 1.1rem;
+    }
+
+    .architecture-svg {
+      width: 100%;
+      max-width: 900px;
+      margin: 0 auto;
+      display: block;
+    }
+
+    .component-box {
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+
+    .component-box:hover rect,
+    .component-box.active rect {
+      filter: brightness(1.2);
+    }
+
+    .component-box.active rect {
+      stroke-width: 3;
+    }
+
+    .component-box rect {
+      rx: 8;
+      ry: 8;
+    }
+
+    .component-box text {
+      fill: white;
+      font-size: 14px;
+      font-weight: 600;
+      text-anchor: middle;
+    }
+
+    .component-box .subtitle {
+      font-size: 11px;
+      font-weight: 400;
+      opacity: 0.8;
+    }
+
+    .data-path {
+      fill: none;
+      stroke: var(--border-color);
+      stroke-width: 2;
+      stroke-dasharray: 8,4;
+    }
+
+    .data-packet {
+      fill: var(--data-flow);
+      filter: drop-shadow(0 0 6px var(--data-flow));
+    }
+
+    @keyframes flowRight {
+      0% { opacity: 0; transform: translateX(-20px); }
+      10% { opacity: 1; }
+      90% { opacity: 1; }
+      100% { opacity: 0; transform: translateX(20px); }
+    }
+
+    /* Animation Controls */
+    .controls {
+      display: flex;
+      justify-content: center;
+      gap: 1rem;
+      margin: 1.5rem 0;
+      flex-wrap: wrap;
+    }
+
+    .control-btn {
+      background: var(--bg-tertiary);
+      border: 1px solid var(--border-color);
+      color: var(--text-primary);
+      padding: 0.75rem 1.5rem;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 0.875rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      transition: all 0.2s;
+    }
+
+    .control-btn:hover {
+      background: var(--border-color);
+    }
+
+    .control-btn.primary {
+      background: var(--vue-green);
+      border-color: var(--vue-green);
+      color: white;
+    }
+
+    .control-btn.primary:hover {
+      filter: brightness(1.1);
+    }
+
+    .step-indicator {
+      background: var(--bg-tertiary);
+      padding: 0.75rem 1.5rem;
+      border-radius: 8px;
+      font-size: 0.875rem;
+      color: var(--text-secondary);
+    }
+
+    /* Step Description */
+    .step-description {
+      background: var(--bg-tertiary);
+      border-radius: 8px;
+      padding: 1.5rem;
+      margin-top: 1rem;
+      min-height: 100px;
+    }
+
+    .step-description h4 {
+      color: var(--data-flow);
+      margin-bottom: 0.5rem;
+      font-size: 1rem;
+    }
+
+    .step-description p {
+      color: var(--text-secondary);
+      margin-bottom: 1rem;
+    }
+
+    .step-description code {
+      display: block;
+      background: var(--bg-primary);
+      padding: 1rem;
+      border-radius: 6px;
+      font-family: 'JetBrains Mono', 'Fira Code', monospace;
+      font-size: 0.8rem;
+      overflow-x: auto;
+      white-space: pre;
+    }
+
+    /* Component Cards */
+    .cards-section {
+      margin-bottom: 2rem;
+    }
+
+    .cards-section h3 {
+      margin-bottom: 1rem;
+      font-size: 1.1rem;
+    }
+
+    .cards-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 1rem;
+    }
+
+    .card {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 1.5rem;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .card:hover {
+      border-color: var(--text-secondary);
+      transform: translateY(-2px);
+    }
+
+    .card-header {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      margin-bottom: 0.75rem;
+    }
+
+    .card-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.25rem;
+    }
+
+    .card-icon.vue { background: rgba(66, 184, 131, 0.2); color: var(--vue-green); }
+    .card-icon.idb { background: rgba(249, 115, 22, 0.2); color: var(--idb-orange); }
+    .card-icon.ws { background: rgba(59, 130, 246, 0.2); color: var(--ws-blue); }
+    .card-icon.server { background: rgba(168, 85, 247, 0.2); color: var(--server-purple); }
+    .card-icon.crosstab { background: rgba(6, 182, 212, 0.2); color: var(--crosstab-cyan); }
+    .card-icon.conflict { background: rgba(239, 68, 68, 0.2); color: var(--conflict-red); }
+
+    .card h4 {
+      font-size: 1rem;
+    }
+
+    .card p {
+      color: var(--text-secondary);
+      font-size: 0.875rem;
+    }
+
+    .card-file {
+      margin-top: 0.75rem;
+      font-family: monospace;
+      font-size: 0.75rem;
+      color: var(--text-secondary);
+      background: var(--bg-tertiary);
+      padding: 0.25rem 0.5rem;
+      border-radius: 4px;
+      display: inline-block;
+    }
+
+    /* Demo Section */
+    .demos-section {
+      background: var(--bg-secondary);
+      border-radius: 12px;
+      padding: 2rem;
+      margin-bottom: 2rem;
+    }
+
+    .demos-section h3 {
+      margin-bottom: 1rem;
+      font-size: 1.1rem;
+    }
+
+    .demo-tabs {
+      display: flex;
+      gap: 0.5rem;
+      margin-bottom: 1.5rem;
+      flex-wrap: wrap;
+    }
+
+    .demo-tab {
+      background: var(--bg-tertiary);
+      border: 1px solid var(--border-color);
+      color: var(--text-primary);
+      padding: 0.5rem 1rem;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.875rem;
+    }
+
+    .demo-tab.active {
+      background: var(--vue-green);
+      border-color: var(--vue-green);
+      color: white;
+    }
+
+    .demo-content {
+      display: none;
+    }
+
+    .demo-content.active {
+      display: block;
+    }
+
+    /* Conflict Demo */
+    .conflict-demo {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.5rem;
+    }
+
+    @media (max-width: 768px) {
+      .conflict-demo {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .device-panel {
+      background: var(--bg-tertiary);
+      border-radius: 8px;
+      padding: 1.5rem;
+    }
+
+    .device-panel h4 {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin-bottom: 1rem;
+    }
+
+    .device-panel .device-icon {
+      width: 24px;
+      height: 24px;
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.75rem;
+    }
+
+    .device-a .device-icon { background: var(--ws-blue); }
+    .device-b .device-icon { background: var(--server-purple); }
+
+    .form-group {
+      margin-bottom: 1rem;
+    }
+
+    .form-group label {
+      display: block;
+      font-size: 0.75rem;
+      color: var(--text-secondary);
+      margin-bottom: 0.25rem;
+    }
+
+    .form-group input {
+      width: 100%;
+      background: var(--bg-primary);
+      border: 1px solid var(--border-color);
+      color: var(--text-primary);
+      padding: 0.5rem;
+      border-radius: 4px;
+      font-family: inherit;
+    }
+
+    .form-group input:focus {
+      outline: none;
+      border-color: var(--vue-green);
+    }
+
+    .resolve-section {
+      grid-column: 1 / -1;
+      text-align: center;
+    }
+
+    .resolve-btn {
+      background: var(--vue-green);
+      border: none;
+      color: white;
+      padding: 0.75rem 2rem;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 1rem;
+      font-weight: 600;
+      transition: all 0.2s;
+    }
+
+    .resolve-btn:hover {
+      filter: brightness(1.1);
+    }
+
+    .result-panel {
+      grid-column: 1 / -1;
+      background: var(--bg-tertiary);
+      border-radius: 8px;
+      padding: 1.5rem;
+      display: none;
+    }
+
+    .result-panel.show {
+      display: block;
+    }
+
+    .result-panel.winner-a {
+      border-left: 4px solid var(--ws-blue);
+    }
+
+    .result-panel.winner-b {
+      border-left: 4px solid var(--server-purple);
+    }
+
+    .result-panel h4 {
+      margin-bottom: 0.5rem;
+    }
+
+    .result-panel .winner-badge {
+      display: inline-block;
+      padding: 0.25rem 0.75rem;
+      border-radius: 999px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      margin-bottom: 0.5rem;
+    }
+
+    .winner-a .winner-badge { background: var(--ws-blue); }
+    .winner-b .winner-badge { background: var(--server-purple); }
+
+    /* WebSocket Demo */
+    .ws-demo {
+      background: var(--bg-tertiary);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    .ws-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 1rem;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .ws-status {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.875rem;
+    }
+
+    .ws-status .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--success-green);
+    }
+
+    .ws-messages {
+      height: 300px;
+      overflow-y: auto;
+      padding: 1rem;
+      font-family: 'JetBrains Mono', 'Fira Code', monospace;
+      font-size: 0.8rem;
+    }
+
+    .ws-message {
+      margin-bottom: 1rem;
+      padding: 0.75rem;
+      background: var(--bg-primary);
+      border-radius: 6px;
+      border-left: 3px solid var(--border-color);
+    }
+
+    .ws-message.outgoing { border-left-color: var(--vue-green); }
+    .ws-message.incoming { border-left-color: var(--ws-blue); }
+
+    .ws-message .direction {
+      font-size: 0.7rem;
+      color: var(--text-secondary);
+      margin-bottom: 0.25rem;
+    }
+
+    .ws-actions {
+      padding: 1rem;
+      border-top: 1px solid var(--border-color);
+      display: flex;
+      gap: 0.5rem;
+    }
+
+    /* Cross-Tab Demo */
+    .crosstab-demo {
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      gap: 1rem;
+      align-items: start;
+    }
+
+    @media (max-width: 768px) {
+      .crosstab-demo {
+        grid-template-columns: 1fr;
+      }
+      .crosstab-arrow {
+        transform: rotate(90deg);
+      }
+    }
+
+    .tab-panel {
+      background: var(--bg-tertiary);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    .tab-header {
+      padding: 0.75rem 1rem;
+      background: var(--bg-primary);
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .tab-header .tab-dots {
+      display: flex;
+      gap: 4px;
+    }
+
+    .tab-header .tab-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: var(--border-color);
+    }
+
+    .tab-header .tab-dot:nth-child(1) { background: #ff5f57; }
+    .tab-header .tab-dot:nth-child(2) { background: #febc2e; }
+    .tab-header .tab-dot:nth-child(3) { background: #28c840; }
+
+    .tab-content {
+      padding: 1rem;
+    }
+
+    .tab-todo-list {
+      min-height: 150px;
+    }
+
+    .tab-todo-item {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.5rem;
+      background: var(--bg-primary);
+      border-radius: 4px;
+      margin-bottom: 0.5rem;
+      font-size: 0.875rem;
+    }
+
+    .tab-todo-item.syncing {
+      animation: pulse 1s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+
+    .tab-add-form {
+      display: flex;
+      gap: 0.5rem;
+      margin-top: 1rem;
+    }
+
+    .tab-add-form input {
+      flex: 1;
+      background: var(--bg-primary);
+      border: 1px solid var(--border-color);
+      color: var(--text-primary);
+      padding: 0.5rem;
+      border-radius: 4px;
+    }
+
+    .crosstab-arrow {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+      color: var(--crosstab-cyan);
+    }
+
+    .crosstab-arrow .arrow-line {
+      font-size: 2rem;
+    }
+
+    .crosstab-arrow .label {
+      font-size: 0.7rem;
+      color: var(--text-secondary);
+      text-align: center;
+    }
+
+    .broadcast-indicator {
+      margin-top: 1rem;
+      padding: 0.75rem;
+      background: var(--bg-primary);
+      border-radius: 6px;
+      font-family: monospace;
+      font-size: 0.75rem;
+      display: none;
+    }
+
+    .broadcast-indicator.show {
+      display: block;
+      animation: fadeIn 0.3s;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(-10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Data Flow Demo */
+    .dataflow-demo {
+      background: var(--bg-tertiary);
+      border-radius: 8px;
+      padding: 1.5rem;
+    }
+
+    .sequence-diagram {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .sequence-step {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      padding: 0.75rem;
+      background: var(--bg-primary);
+      border-radius: 6px;
+      opacity: 0.4;
+      transition: all 0.3s;
+    }
+
+    .sequence-step.active {
+      opacity: 1;
+      border-left: 3px solid var(--data-flow);
+    }
+
+    .sequence-step .step-num {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      background: var(--bg-tertiary);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+
+    .sequence-step.active .step-num {
+      background: var(--data-flow);
+      color: var(--bg-primary);
+    }
+
+    .sequence-step .step-from,
+    .sequence-step .step-to {
+      font-size: 0.8rem;
+      padding: 0.25rem 0.5rem;
+      border-radius: 4px;
+      font-weight: 500;
+    }
+
+    .sequence-step .step-arrow {
+      color: var(--text-secondary);
+    }
+
+    .sequence-step .step-desc {
+      flex: 1;
+      font-size: 0.8rem;
+      color: var(--text-secondary);
+    }
+
+    /* Modal */
+    dialog {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      color: var(--text-primary);
+      max-width: 700px;
+      width: 90%;
+      padding: 0;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+    }
+
+    dialog::backdrop {
+      background: rgba(0, 0, 0, 0.75);
+      backdrop-filter: blur(4px);
+    }
+
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 1.5rem;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .modal-header h3 {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .modal-close {
+      background: none;
+      border: none;
+      color: var(--text-secondary);
+      font-size: 1.5rem;
+      cursor: pointer;
+      padding: 0.25rem;
+      line-height: 1;
+    }
+
+    .modal-close:hover {
+      color: var(--text-primary);
+    }
+
+    .modal-body {
+      padding: 1.5rem;
+      max-height: 60vh;
+      overflow-y: auto;
+    }
+
+    .modal-body p {
+      color: var(--text-secondary);
+      margin-bottom: 1rem;
+    }
+
+    .modal-body pre {
+      background: var(--bg-primary);
+      padding: 1rem;
+      border-radius: 8px;
+      overflow-x: auto;
+      font-family: 'JetBrains Mono', 'Fira Code', monospace;
+      font-size: 0.8rem;
+      line-height: 1.5;
+    }
+
+    /* Syntax highlighting */
+    .keyword { color: #c678dd; }
+    .string { color: #98c379; }
+    .function { color: #61afef; }
+    .comment { color: #5c6370; font-style: italic; }
+    .type { color: #e5c07b; }
+    .number { color: #d19a66; }
+    .operator { color: #56b6c2; }
+
+    /* Footer */
+    footer {
+      text-align: center;
+      padding: 2rem;
+      color: var(--text-secondary);
+      font-size: 0.875rem;
+    }
+
+    footer a {
+      color: var(--vue-green);
+      text-decoration: none;
+    }
+
+    footer a:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>
+      <span class="vue-icon">
+        <svg width="24" height="24" viewBox="0 0 256 221" fill="currentColor">
+          <path d="M204.8 0H256L128 220.8L0 0h97.92L128 51.2L157.44 0h47.36z"/>
+          <path d="M0 0l128 220.8L256 0h-51.2L128 132.48L51.2 0H0z" fill-opacity="0.5"/>
+        </svg>
+      </span>
+      Nuxt Sync Engine
+    </h1>
+    <div class="header-actions">
+      <button class="theme-toggle" onclick="toggleTheme()">Toggle Theme</button>
+    </div>
+  </header>
+
+  <div class="container">
+    <section class="intro">
+      <h2>Local-First Data Sync with IndexedDB + WebSocket</h2>
+      <p>Interactive guide to understanding how data flows from Vue components through IndexedDB to the server and back, using Last-Write-Wins (LWW) conflict resolution.</p>
+    </section>
+
+    <!-- Architecture Diagram -->
+    <section class="architecture-section">
+      <h3>Architecture Overview (Click components for details)</h3>
+
+      <svg class="architecture-svg" viewBox="0 0 900 180">
+        <!-- Connection paths -->
+        <path class="data-path" d="M130,90 L210,90" id="path1"/>
+        <path class="data-path" d="M330,90 L410,90" id="path2"/>
+        <path class="data-path" d="M530,90 L610,90" id="path3"/>
+        <path class="data-path" d="M730,90 L810,90" id="path4"/>
+
+        <!-- Cross-tab path (below) -->
+        <path class="data-path" d="M270,130 L270,150 L470,150 L470,130" id="path-crosstab" style="stroke: var(--crosstab-cyan);"/>
+        <text x="370" y="165" fill="var(--text-secondary)" font-size="10" text-anchor="middle">BroadcastChannel</text>
+
+        <!-- Vue Client -->
+        <g class="component-box" data-component="vue" onclick="openModal('vue')">
+          <rect x="10" y="50" width="120" height="80" fill="var(--vue-green)"/>
+          <text x="70" y="85">Vue Client</text>
+          <text x="70" y="105" class="subtitle">Composables</text>
+        </g>
+
+        <!-- IndexedDB -->
+        <g class="component-box" data-component="idb" onclick="openModal('idb')">
+          <rect x="210" y="50" width="120" height="80" fill="var(--idb-orange)"/>
+          <text x="270" y="85">IndexedDB</text>
+          <text x="270" y="105" class="subtitle">Local Storage</text>
+        </g>
+
+        <!-- WebSocket -->
+        <g class="component-box" data-component="ws" onclick="openModal('ws')">
+          <rect x="410" y="50" width="120" height="80" fill="var(--ws-blue)"/>
+          <text x="470" y="85">WebSocket</text>
+          <text x="470" y="105" class="subtitle">Real-time Sync</text>
+        </g>
+
+        <!-- Server -->
+        <g class="component-box" data-component="server" onclick="openModal('server')">
+          <rect x="610" y="50" width="120" height="80" fill="var(--server-purple)"/>
+          <text x="670" y="85">Server</text>
+          <text x="670" y="105" class="subtitle">Nitro Handler</text>
+        </g>
+
+        <!-- SQLite -->
+        <g class="component-box" data-component="sqlite" onclick="openModal('server')">
+          <rect x="810" y="50" width="80" height="80" fill="#64748b"/>
+          <text x="850" y="90">SQLite</text>
+        </g>
+
+        <!-- Animated data packets -->
+        <circle class="data-packet" r="6" id="packet1" style="display: none;">
+          <animateMotion dur="1s" fill="freeze">
+            <mpath href="#path1"/>
+          </animateMotion>
+        </circle>
+      </svg>
+
+      <!-- Animation Controls -->
+      <div class="controls">
+        <button class="control-btn" onclick="prevStep()">&#9664; Prev</button>
+        <button class="control-btn primary" id="playBtn" onclick="togglePlay()">&#9654; Play</button>
+        <button class="control-btn" onclick="nextStep()">Next &#9654;</button>
+        <button class="control-btn" onclick="resetAnimation()">Reset</button>
+        <span class="step-indicator">Step <span id="currentStep">0</span> / 8</span>
+      </div>
+
+      <!-- Step Description -->
+      <div class="step-description" id="stepDescription">
+        <h4>Welcome to the Sync Engine Walkthrough</h4>
+        <p>Click "Play" or "Next" to see how data flows through the system. Each step shows what happens when you create, update, or delete a todo.</p>
+        <code>// Press Play to begin the animation</code>
+      </div>
+    </section>
+
+    <!-- Component Cards -->
+    <section class="cards-section">
+      <h3>Core Components</h3>
+      <div class="cards-grid">
+        <div class="card" onclick="openModal('vue')">
+          <div class="card-header">
+            <div class="card-icon vue">V</div>
+            <h4>Vue Composables</h4>
+          </div>
+          <p>Reactive state management with useIDBSyncEngine and useIDBCoList for CRUD operations.</p>
+          <span class="card-file">app/composables/</span>
+        </div>
+
+        <div class="card" onclick="openModal('idb')">
+          <div class="card-header">
+            <div class="card-icon idb">D</div>
+            <h4>IndexedDB Layer</h4>
+          </div>
+          <p>Local storage with transaction queue for atomic operations and 6 object stores.</p>
+          <span class="card-file">useIndexedDB.ts</span>
+        </div>
+
+        <div class="card" onclick="openModal('ws')">
+          <div class="card-header">
+            <div class="card-icon ws">W</div>
+            <h4>WebSocket Sync</h4>
+          </div>
+          <p>Real-time bi-directional sync with auto-reconnect and exponential backoff.</p>
+          <span class="card-file">server/routes/_ws.ts</span>
+        </div>
+
+        <div class="card" onclick="openModal('crosstab')">
+          <div class="card-header">
+            <div class="card-icon crosstab">T</div>
+            <h4>Cross-Tab Sync</h4>
+          </div>
+          <p>BroadcastChannel API for instant sync between browser tabs without server roundtrip.</p>
+          <span class="card-file">useCrossTabSync.ts</span>
+        </div>
+
+        <div class="card" onclick="openModal('lww')">
+          <div class="card-header">
+            <div class="card-icon conflict">C</div>
+            <h4>Conflict Resolution</h4>
+          </div>
+          <p>Last-Write-Wins (LWW) with deterministic device ID tiebreaker for consistent merging.</p>
+          <span class="card-file">sync-protocol.ts</span>
+        </div>
+
+        <div class="card" onclick="openModal('server')">
+          <div class="card-header">
+            <div class="card-icon server">S</div>
+            <h4>Server Database</h4>
+          </div>
+          <p>SQLite with better-sqlite3 for persistent storage and batch upsert with conflict detection.</p>
+          <span class="card-file">server/utils/db.ts</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Interactive Demos -->
+    <section class="demos-section">
+      <h3>Interactive Demos</h3>
+
+      <div class="demo-tabs">
+        <button class="demo-tab active" onclick="showDemo('conflict')">Conflict Resolution</button>
+        <button class="demo-tab" onclick="showDemo('websocket')">WebSocket Messages</button>
+        <button class="demo-tab" onclick="showDemo('crosstab')">Cross-Tab Sync</button>
+        <button class="demo-tab" onclick="showDemo('dataflow')">Data Flow</button>
+      </div>
+
+      <!-- Conflict Demo -->
+      <div class="demo-content active" id="demo-conflict">
+        <div class="conflict-demo">
+          <div class="device-panel device-a">
+            <h4><span class="device-icon">A</span> Device A</h4>
+            <div class="form-group">
+              <label>Todo Text</label>
+              <input type="text" id="deviceA-text" value="Buy milk">
+            </div>
+            <div class="form-group">
+              <label>Timestamp (ms)</label>
+              <input type="number" id="deviceA-time" value="1706000000000">
+            </div>
+            <div class="form-group">
+              <label>Device ID</label>
+              <input type="text" id="deviceA-id" value="device-aaa" readonly>
+            </div>
+          </div>
+
+          <div class="device-panel device-b">
+            <h4><span class="device-icon">B</span> Device B</h4>
+            <div class="form-group">
+              <label>Todo Text</label>
+              <input type="text" id="deviceB-text" value="Buy groceries">
+            </div>
+            <div class="form-group">
+              <label>Timestamp (ms)</label>
+              <input type="number" id="deviceB-time" value="1706000001000">
+            </div>
+            <div class="form-group">
+              <label>Device ID</label>
+              <input type="text" id="deviceB-id" value="device-bbb" readonly>
+            </div>
+          </div>
+
+          <div class="resolve-section">
+            <button class="resolve-btn" onclick="resolveConflict()">Resolve Conflict (LWW)</button>
+          </div>
+
+          <div class="result-panel" id="conflict-result">
+            <span class="winner-badge">WINNER</span>
+            <h4 id="result-title"></h4>
+            <p id="result-explanation"></p>
+            <code id="result-code"></code>
+          </div>
+        </div>
+      </div>
+
+      <!-- WebSocket Demo -->
+      <div class="demo-content" id="demo-websocket">
+        <div class="ws-demo">
+          <div class="ws-header">
+            <div class="ws-status">
+              <span class="dot"></span>
+              <span>Connected to ws://localhost/_ws</span>
+            </div>
+            <button class="control-btn" onclick="clearWsMessages()">Clear</button>
+          </div>
+          <div class="ws-messages" id="ws-messages">
+            <!-- Messages will be added here -->
+          </div>
+          <div class="ws-actions">
+            <button class="control-btn" onclick="simulateWsMessage('connect')">Simulate Connect</button>
+            <button class="control-btn" onclick="simulateWsMessage('sync')">Simulate Sync</button>
+            <button class="control-btn" onclick="simulateWsMessage('ping')">Simulate Ping</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Cross-Tab Demo -->
+      <div class="demo-content" id="demo-crosstab">
+        <div class="crosstab-demo">
+          <div class="tab-panel">
+            <div class="tab-header">
+              <div class="tab-dots">
+                <span class="tab-dot"></span>
+                <span class="tab-dot"></span>
+                <span class="tab-dot"></span>
+              </div>
+              <span style="margin-left: 0.5rem; font-size: 0.8rem;">Tab 1</span>
+            </div>
+            <div class="tab-content">
+              <div class="tab-todo-list" id="tab1-todos"></div>
+              <div class="tab-add-form">
+                <input type="text" id="tab1-input" placeholder="Add todo...">
+                <button class="control-btn" onclick="addTodoToTab('tab1')">Add</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="crosstab-arrow">
+            <div class="arrow-line">&#8596;</div>
+            <div class="label">BroadcastChannel<br>sync-engine-cross-tab</div>
+          </div>
+
+          <div class="tab-panel">
+            <div class="tab-header">
+              <div class="tab-dots">
+                <span class="tab-dot"></span>
+                <span class="tab-dot"></span>
+                <span class="tab-dot"></span>
+              </div>
+              <span style="margin-left: 0.5rem; font-size: 0.8rem;">Tab 2</span>
+            </div>
+            <div class="tab-content">
+              <div class="tab-todo-list" id="tab2-todos"></div>
+              <div class="tab-add-form">
+                <input type="text" id="tab2-input" placeholder="Add todo...">
+                <button class="control-btn" onclick="addTodoToTab('tab2')">Add</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="broadcast-indicator" id="broadcast-indicator">
+          <strong style="color: var(--crosstab-cyan);">BroadcastChannel Message:</strong><br>
+          <span id="broadcast-message"></span>
+        </div>
+      </div>
+
+      <!-- Data Flow Demo -->
+      <div class="demo-content" id="demo-dataflow">
+        <div class="dataflow-demo">
+          <div class="controls" style="margin-bottom: 1rem;">
+            <button class="control-btn" onclick="prevFlowStep()">&#9664; Prev</button>
+            <button class="control-btn primary" onclick="nextFlowStep()">Next &#9654;</button>
+            <button class="control-btn" onclick="resetFlowSteps()">Reset</button>
+          </div>
+
+          <div class="sequence-diagram" id="sequence-diagram">
+            <div class="sequence-step" data-step="1">
+              <span class="step-num">1</span>
+              <span class="step-from" style="background: var(--vue-green); color: white;">User</span>
+              <span class="step-arrow">&#8594;</span>
+              <span class="step-to" style="background: var(--vue-green); color: white;">Vue</span>
+              <span class="step-desc">User clicks "Add Todo" button</span>
+            </div>
+            <div class="sequence-step" data-step="2">
+              <span class="step-num">2</span>
+              <span class="step-from" style="background: var(--vue-green); color: white;">Vue</span>
+              <span class="step-arrow">&#8594;</span>
+              <span class="step-to" style="background: var(--idb-orange); color: white;">IDB</span>
+              <span class="step-desc">useIDBCoList.create() writes to IndexedDB</span>
+            </div>
+            <div class="sequence-step" data-step="3">
+              <span class="step-num">3</span>
+              <span class="step-from" style="background: var(--idb-orange); color: white;">IDB</span>
+              <span class="step-arrow">&#8594;</span>
+              <span class="step-to" style="background: var(--idb-orange); color: white;">Unsynced</span>
+              <span class="step-desc">markUnsynced() tracks entity for sync</span>
+            </div>
+            <div class="sequence-step" data-step="4">
+              <span class="step-num">4</span>
+              <span class="step-from" style="background: var(--idb-orange); color: white;">IDB</span>
+              <span class="step-arrow">&#8594;</span>
+              <span class="step-to" style="background: var(--crosstab-cyan); color: white;">Tabs</span>
+              <span class="step-desc">BroadcastChannel notifies other tabs</span>
+            </div>
+            <div class="sequence-step" data-step="5">
+              <span class="step-num">5</span>
+              <span class="step-from" style="background: var(--idb-orange); color: white;">IDB</span>
+              <span class="step-arrow">&#8594;</span>
+              <span class="step-to" style="background: var(--ws-blue); color: white;">WS</span>
+              <span class="step-desc">WebSocket sends changes to server</span>
+            </div>
+            <div class="sequence-step" data-step="6">
+              <span class="step-num">6</span>
+              <span class="step-from" style="background: var(--ws-blue); color: white;">WS</span>
+              <span class="step-arrow">&#8594;</span>
+              <span class="step-to" style="background: var(--server-purple); color: white;">Server</span>
+              <span class="step-desc">Server applies LWW merge to SQLite</span>
+            </div>
+            <div class="sequence-step" data-step="7">
+              <span class="step-num">7</span>
+              <span class="step-from" style="background: var(--server-purple); color: white;">Server</span>
+              <span class="step-arrow">&#8594;</span>
+              <span class="step-to" style="background: var(--ws-blue); color: white;">WS</span>
+              <span class="step-desc">Server broadcasts to all connected clients</span>
+            </div>
+            <div class="sequence-step" data-step="8">
+              <span class="step-num">8</span>
+              <span class="step-from" style="background: var(--ws-blue); color: white;">WS</span>
+              <span class="step-arrow">&#8594;</span>
+              <span class="step-to" style="background: var(--vue-green); color: white;">Vue</span>
+              <span class="step-desc">Clients merge incoming changes, markSynced()</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <footer>
+    <p>Based on <a href="#">nuxt-sync-engine</a> | Local-First Data with CRDTs</p>
+  </footer>
+
+  <!-- Modals -->
+  <dialog id="modal-vue">
+    <div class="modal-header">
+      <h3><span style="color: var(--vue-green);">V</span> Vue Composables</h3>
+      <button class="modal-close" onclick="closeModal('vue')">&times;</button>
+    </div>
+    <div class="modal-body">
+      <p>The sync engine is initialized at the app root and provides context to all components via Vue's injection pattern.</p>
+      <pre><span class="comment">// app/composables/useIDBSyncEngine.ts</span>
+<span class="keyword">export const</span> [useIDBSyncEngineProvider, useIDBSyncEngine] =
+  <span class="function">createInjectionState</span>((options: { peer?: <span class="type">string</span> }) => {
+    <span class="keyword">const</span> { db, isReady, init } = <span class="function">useIndexedDB</span>()
+    <span class="keyword">const</span> deviceId = <span class="function">useDeviceId</span>()
+    <span class="keyword">const</span> { status: wsStatus, send, data } = <span class="function">useWebSocket</span>(peer, {
+      autoReconnect: {
+        retries: <span class="number">5</span>,
+        delay: (retries) => <span class="function">Math.min</span>(<span class="number">1000</span> * <span class="number">2</span> ** (retries - <span class="number">1</span>), <span class="number">30000</span>)
+      }
+    })
+
+    <span class="keyword">return</span> { db, deviceId, wsStatus, send, ... }
+  })</pre>
+
+      <p style="margin-top: 1rem;">CRUD operations use useIDBCoList which handles IndexedDB transactions and sync tracking:</p>
+      <pre><span class="comment">// app/composables/useIDBCoList.ts</span>
+<span class="keyword">async function</span> <span class="function">create</span>(data: T): <span class="type">Promise</span>&lt;<span class="type">string</span>&gt; {
+  <span class="keyword">const</span> id = <span class="function">crypto.randomUUID</span>()
+  <span class="keyword">const</span> item: <span class="type">SyncItem</span> = {
+    id,
+    data,
+    createdAt: <span class="function">Date.now</span>(),
+    updatedAt: <span class="function">Date.now</span>(),
+    deviceId: engine.deviceId,
+    deleted: <span class="keyword">false</span>
+  }
+
+  <span class="keyword">await</span> txQueue.<span class="function">enqueue</span>(db, collection, <span class="string">'readwrite'</span>, (tx) => {
+    tx.<span class="function">objectStore</span>(collection).<span class="function">put</span>(item)
+  })
+
+  <span class="function">markUnsynced</span>(id)
+  <span class="function">broadcast</span>({ type: <span class="string">'entity_changed'</span>, collection, entityId: id })
+  <span class="keyword">return</span> id
+}</pre>
+    </div>
+  </dialog>
+
+  <dialog id="modal-idb">
+    <div class="modal-header">
+      <h3><span style="color: var(--idb-orange);">D</span> IndexedDB Layer</h3>
+      <button class="modal-close" onclick="closeModal('idb')">&times;</button>
+    </div>
+    <div class="modal-body">
+      <p>IndexedDB stores data locally with 6 object stores for different purposes:</p>
+      <pre><span class="comment">// app/composables/useIndexedDB.ts - Schema</span>
+<span class="keyword">const</span> stores = {
+  <span class="string">'todos'</span>:      <span class="comment">// Entity data (id, data, timestamps, deviceId)</span>
+  <span class="string">'projects'</span>:   <span class="comment">// Entity data</span>
+  <span class="string">'sessions'</span>:   <span class="comment">// Session tracking (vector clocks)</span>
+  <span class="string">'operations'</span>: <span class="comment">// Ordered operations per session</span>
+  <span class="string">'unsynced'</span>:   <span class="comment">// Entities pending sync</span>
+  <span class="string">'sync_meta'</span>:  <span class="comment">// Key-value metadata</span>
+}</pre>
+
+      <p style="margin-top: 1rem;">Transaction queue serializes operations to prevent conflicts:</p>
+      <pre><span class="comment">// app/utils/idb-transaction-queue.ts</span>
+<span class="keyword">class</span> <span class="type">TransactionQueue</span> {
+  <span class="keyword">private</span> queue: <span class="type">Array</span>&lt;() => <span class="type">Promise</span>&lt;<span class="type">void</span>&gt;&gt; = []
+  <span class="keyword">private</span> processing = <span class="keyword">false</span>
+
+  <span class="keyword">async</span> <span class="function">enqueue</span>&lt;T&gt;(
+    db: <span class="type">IDBDatabase</span>,
+    stores: <span class="type">string</span> | <span class="type">string</span>[],
+    mode: <span class="type">IDBTransactionMode</span>,
+    operation: (tx: <span class="type">IDBTransaction</span>) => <span class="type">Promise</span>&lt;T&gt;
+  ): <span class="type">Promise</span>&lt;T&gt; {
+    <span class="keyword">return new</span> <span class="type">Promise</span>((resolve, reject) => {
+      <span class="keyword">this</span>.queue.<span class="function">push</span>(<span class="keyword">async</span> () => {
+        <span class="keyword">const</span> tx = db.<span class="function">transaction</span>(stores, mode)
+        <span class="keyword">const</span> result = <span class="keyword">await</span> <span class="function">operation</span>(tx)
+        <span class="function">resolve</span>(result)
+      })
+      <span class="keyword">this</span>.<span class="function">processQueue</span>()
+    })
+  }
+}</pre>
+    </div>
+  </dialog>
+
+  <dialog id="modal-ws">
+    <div class="modal-header">
+      <h3><span style="color: var(--ws-blue);">W</span> WebSocket Sync</h3>
+      <button class="modal-close" onclick="closeModal('ws')">&times;</button>
+    </div>
+    <div class="modal-body">
+      <p>Server-side WebSocket handler using Nitro's CrossWS support:</p>
+      <pre><span class="comment">// server/routes/_ws.ts</span>
+<span class="keyword">export default</span> <span class="function">defineWebSocketHandler</span>({
+  <span class="function">open</span>(peer) {
+    peer.<span class="function">subscribe</span>(<span class="string">'sync-channel'</span>)
+    peer.<span class="function">send</span>(<span class="function">JSON.stringify</span>({
+      type: <span class="string">'welcome'</span>,
+      peerId: peer.id
+    }))
+  },
+
+  <span class="function">message</span>(peer, message) {
+    <span class="keyword">const</span> data = <span class="function">JSON.parse</span>(message.text())
+
+    <span class="keyword">switch</span> (data.type) {
+      <span class="keyword">case</span> <span class="string">'sync'</span>:
+        <span class="comment">// Broadcast changes to all peers</span>
+        peer.<span class="function">publish</span>(<span class="string">'sync-channel'</span>, <span class="function">JSON.stringify</span>(data))
+        <span class="keyword">break</span>
+      <span class="keyword">case</span> <span class="string">'ping'</span>:
+        peer.<span class="function">send</span>(<span class="function">JSON.stringify</span>({ type: <span class="string">'pong'</span> }))
+        <span class="keyword">break</span>
+    }
+  },
+
+  <span class="function">close</span>(peer) {
+    <span class="function">console.log</span>(<span class="string">'Client disconnected:'</span>, peer.id)
+  }
+})</pre>
+    </div>
+  </dialog>
+
+  <dialog id="modal-crosstab">
+    <div class="modal-header">
+      <h3><span style="color: var(--crosstab-cyan);">T</span> Cross-Tab Sync</h3>
+      <button class="modal-close" onclick="closeModal('crosstab')">&times;</button>
+    </div>
+    <div class="modal-body">
+      <p>BroadcastChannel enables instant sync between browser tabs without server roundtrip:</p>
+      <pre><span class="comment">// app/composables/useCrossTabSync.ts</span>
+<span class="keyword">interface</span> <span class="type">CrossTabChange</span> {
+  type: <span class="string">'entity_changed'</span>
+  collection: <span class="type">string</span>      <span class="comment">// e.g., 'todos'</span>
+  entityId: <span class="type">string</span>
+  operation: <span class="string">'create'</span> | <span class="string">'update'</span> | <span class="string">'delete'</span>
+  sourceTabId: <span class="type">string</span>     <span class="comment">// Filter out own messages</span>
+  timestamp: <span class="type">number</span>
+}
+
+<span class="keyword">export function</span> <span class="function">useCrossTabSync</span>(tabId: <span class="type">string</span>) {
+  <span class="keyword">const</span> channel = <span class="keyword">new</span> <span class="type">BroadcastChannel</span>(<span class="string">'sync-engine-cross-tab'</span>)
+
+  <span class="keyword">function</span> <span class="function">broadcast</span>(change: <span class="type">Omit</span>&lt;<span class="type">CrossTabChange</span>, <span class="string">'sourceTabId'</span> | <span class="string">'timestamp'</span>&gt;) {
+    channel.<span class="function">postMessage</span>({
+      ...change,
+      sourceTabId: tabId,
+      timestamp: <span class="function">Date.now</span>()
+    })
+  }
+
+  channel.<span class="function">onmessage</span> = (event) => {
+    <span class="keyword">if</span> (event.data.sourceTabId === tabId) <span class="keyword">return</span> <span class="comment">// Ignore own</span>
+    <span class="comment">// Handle incoming change...</span>
+  }
+
+  <span class="keyword">return</span> { broadcast, onMessage: channel.onmessage }
+}</pre>
+    </div>
+  </dialog>
+
+  <dialog id="modal-lww">
+    <div class="modal-header">
+      <h3><span style="color: var(--conflict-red);">C</span> Conflict Resolution (LWW)</h3>
+      <button class="modal-close" onclick="closeModal('lww')">&times;</button>
+    </div>
+    <div class="modal-body">
+      <p>Last-Write-Wins with deterministic device ID tiebreaker ensures all replicas converge to the same value:</p>
+      <pre><span class="comment">// utils/sync-protocol.ts</span>
+<span class="keyword">export function</span> <span class="function">shouldIncomingWin</span>(
+  incoming: <span class="type">Todo</span>,
+  existing: <span class="type">Todo</span>
+): <span class="type">boolean</span> {
+  <span class="comment">// 1. Higher timestamp wins</span>
+  <span class="keyword">if</span> (incoming.updated_at > existing.updated_at) {
+    <span class="keyword">return true</span>
+  }
+
+  <span class="comment">// 2. Equal timestamps: deterministic tiebreaker</span>
+  <span class="keyword">if</span> (incoming.updated_at === existing.updated_at) {
+    <span class="comment">// Lexicographic comparison ensures same result everywhere</span>
+    <span class="keyword">return</span> incoming.device_id > existing.device_id
+  }
+
+  <span class="keyword">return false</span>
+}</pre>
+
+      <p style="margin-top: 1rem;">Server-side conflict detection in batchUpsert:</p>
+      <pre><span class="comment">// server/utils/db.ts</span>
+<span class="keyword">function</span> <span class="function">batchUpsert</span>(tableName, items) {
+  <span class="keyword">const</span> conflicts = []
+
+  <span class="keyword">for</span> (<span class="keyword">const</span> item <span class="keyword">of</span> items) {
+    <span class="keyword">const</span> existing = <span class="function">getItemById</span>(tableName, item.id)
+
+    <span class="keyword">if</span> (existing && existing.updatedAt >= item.updatedAt) {
+      <span class="comment">// Server has newer or equal version</span>
+      conflicts.<span class="function">push</span>(existing)
+    } <span class="keyword">else</span> {
+      <span class="comment">// Insert or update</span>
+      db.<span class="function">prepare</span>(<span class="string">`INSERT OR REPLACE INTO ...`</span>).<span class="function">run</span>(item)
+    }
+  }
+
+  <span class="keyword">return</span> { stored: items.length - conflicts.length, conflicts }
+}</pre>
+    </div>
+  </dialog>
+
+  <dialog id="modal-server">
+    <div class="modal-header">
+      <h3><span style="color: var(--server-purple);">S</span> Server Database</h3>
+      <button class="modal-close" onclick="closeModal('server')">&times;</button>
+    </div>
+    <div class="modal-body">
+      <p>SQLite with better-sqlite3 provides persistent server-side storage:</p>
+      <pre><span class="comment">// server/utils/db.ts</span>
+<span class="keyword">function</span> <span class="function">getDatabase</span>() {
+  <span class="keyword">const</span> db = <span class="keyword">new</span> <span class="type">Database</span>(<span class="string">'./data/sync.db'</span>)
+
+  <span class="comment">// Performance optimizations</span>
+  db.<span class="function">pragma</span>(<span class="string">'journal_mode = WAL'</span>)
+  db.<span class="function">pragma</span>(<span class="string">'synchronous = NORMAL'</span>)
+  db.<span class="function">pragma</span>(<span class="string">'foreign_keys = ON'</span>)
+
+  <span class="comment">// Create tables with sync metadata</span>
+  db.<span class="function">exec</span>(<span class="string">`
+    CREATE TABLE IF NOT EXISTS todos (
+      id TEXT PRIMARY KEY,
+      text TEXT NOT NULL,
+      completed INTEGER DEFAULT 0,
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL,
+      device_id TEXT NOT NULL,
+      deleted INTEGER DEFAULT 0
+    );
+    CREATE INDEX IF NOT EXISTS idx_todos_updated_at
+      ON todos(updated_at);
+  `</span>)
+
+  <span class="keyword">return</span> db
+}</pre>
+
+      <p style="margin-top: 1rem;">Pull endpoint returns changes since timestamp:</p>
+      <pre><span class="comment">// server/api/sync/pull.get.ts</span>
+<span class="keyword">export default</span> <span class="function">defineEventHandler</span>(<span class="keyword">async</span> (event) => {
+  <span class="keyword">const</span> { schema, since, deviceId } = <span class="function">getQuery</span>(event)
+
+  <span class="comment">// Exclude requesting device's own changes</span>
+  <span class="keyword">const</span> changes = <span class="function">getServerChangesSince</span>(
+    schema,
+    since,
+    deviceId
+  )
+
+  <span class="keyword">return</span> {
+    changes,
+    syncedAt: <span class="function">Date.now</span>()
+  }
+})</pre>
+    </div>
+  </dialog>
+
+  <script>
+    // State
+    let currentStep = 0;
+    let isPlaying = false;
+    let playInterval = null;
+    let currentFlowStep = 0;
+
+    // Cross-tab demo state
+    const tab1Todos = [];
+    const tab2Todos = [];
+
+    // Theme toggle
+    function toggleTheme() {
+      document.body.classList.toggle('light-mode');
+    }
+
+    // Animation steps
+    const steps = [
+      {
+        title: 'Step 1: User Action',
+        description: 'User clicks "Add Todo" button in Vue component. This triggers handleAddTodo() function.',
+        code: `// app/pages/index.vue
+async function handleAddTodo() {
+  await create({ text: todoText.value, completed: false })
+  todoText.value = ''
+}`,
+        active: ['vue']
+      },
+      {
+        title: 'Step 2: Vue Composable',
+        description: 'useIDBCoList.create() generates UUID, creates SyncItem with metadata (timestamps, deviceId).',
+        code: `// useIDBCoList.ts
+const item: SyncItem = {
+  id: crypto.randomUUID(),
+  data: { text, completed: false },
+  createdAt: Date.now(),
+  updatedAt: Date.now(),
+  deviceId: engine.deviceId,
+  deleted: false
+}`,
+        active: ['vue', 'idb']
+      },
+      {
+        title: 'Step 3: IndexedDB Write',
+        description: 'Transaction queue serializes the write to prevent conflicts. Item stored in "todos" object store.',
+        code: `// idb-transaction-queue.ts
+await txQueue.enqueue(db, 'todos', 'readwrite', (tx) => {
+  tx.objectStore('todos').put(item)
+})`,
+        active: ['idb']
+      },
+      {
+        title: 'Step 4: Mark Unsynced',
+        description: 'Entity added to "unsynced" store, tracking pending sync. Debounced flush batches updates.',
+        code: `// useUnsyncedTracker.ts
+markUnsynced(id) {
+  pendingUpdates.add(id)
+  debouncedFlush() // 200ms debounce
+}`,
+        active: ['idb']
+      },
+      {
+        title: 'Step 5: Cross-Tab Broadcast',
+        description: 'BroadcastChannel notifies other browser tabs instantly, no server roundtrip needed.',
+        code: `// useCrossTabSync.ts
+broadcast({
+  type: 'entity_changed',
+  collection: 'todos',
+  entityId: id,
+  operation: 'create'
+})`,
+        active: ['idb', 'vue']
+      },
+      {
+        title: 'Step 6: WebSocket Send',
+        description: 'Changes sent to server via WebSocket. Auto-reconnect with exponential backoff if disconnected.',
+        code: `// WebSocket message format
+{
+  type: 'sync',
+  deviceId: 'abc123',
+  schema: 'todos',
+  changes: [{ id, data, updatedAt, ... }]
+}`,
+        active: ['ws']
+      },
+      {
+        title: 'Step 7: Server Merge (LWW)',
+        description: 'Server applies Last-Write-Wins: higher timestamp wins, device ID breaks ties.',
+        code: `// server/utils/db.ts
+if (existing && existing.updatedAt >= item.updatedAt) {
+  conflicts.push(existing) // Server version wins
+} else {
+  db.prepare('INSERT OR REPLACE...').run(item)
+}`,
+        active: ['server', 'ws']
+      },
+      {
+        title: 'Step 8: Broadcast to Clients',
+        description: 'Server broadcasts to all connected clients via WebSocket pub/sub. Clients merge and markSynced().',
+        code: `// server/routes/_ws.ts
+peer.publish('sync-channel', JSON.stringify(data))
+
+// Client receives and merges
+markSynced(entityId)`,
+        active: ['server', 'ws', 'idb', 'vue']
+      }
+    ];
+
+    // Animation control functions
+    function updateStep() {
+      document.getElementById('currentStep').textContent = currentStep;
+
+      // Update step description
+      const desc = document.getElementById('stepDescription');
+      if (currentStep === 0) {
+        desc.innerHTML = `
+          <h4>Welcome to the Sync Engine Walkthrough</h4>
+          <p>Click "Play" or "Next" to see how data flows through the system. Each step shows what happens when you create, update, or delete a todo.</p>
+          <code>// Press Play to begin the animation</code>
+        `;
+      } else {
+        const step = steps[currentStep - 1];
+        desc.innerHTML = `
+          <h4>${step.title}</h4>
+          <p>${step.description}</p>
+          <code>${step.code}</code>
+        `;
+      }
+
+      // Update active components in SVG
+      document.querySelectorAll('.component-box').forEach(box => {
+        box.classList.remove('active');
+      });
+
+      if (currentStep > 0) {
+        const activeComponents = steps[currentStep - 1].active;
+        activeComponents.forEach(comp => {
+          const box = document.querySelector(`[data-component="${comp}"]`);
+          if (box) box.classList.add('active');
+        });
+      }
+    }
+
+    function nextStep() {
+      if (currentStep < 8) {
+        currentStep++;
+        updateStep();
+      }
+    }
+
+    function prevStep() {
+      if (currentStep > 0) {
+        currentStep--;
+        updateStep();
+      }
+    }
+
+    function togglePlay() {
+      isPlaying = !isPlaying;
+      const btn = document.getElementById('playBtn');
+
+      if (isPlaying) {
+        btn.innerHTML = '&#10074;&#10074; Pause';
+        playInterval = setInterval(() => {
+          if (currentStep >= 8) {
+            currentStep = 0;
+          }
+          nextStep();
+        }, 2500);
+      } else {
+        btn.innerHTML = '&#9654; Play';
+        clearInterval(playInterval);
+      }
+    }
+
+    function resetAnimation() {
+      isPlaying = false;
+      clearInterval(playInterval);
+      document.getElementById('playBtn').innerHTML = '&#9654; Play';
+      currentStep = 0;
+      updateStep();
+    }
+
+    // Modal functions
+    function openModal(id) {
+      document.getElementById('modal-' + id).showModal();
+    }
+
+    function closeModal(id) {
+      document.getElementById('modal-' + id).close();
+    }
+
+    // Close modal on backdrop click
+    document.querySelectorAll('dialog').forEach(dialog => {
+      dialog.addEventListener('click', (e) => {
+        if (e.target === dialog) {
+          dialog.close();
+        }
+      });
+    });
+
+    // Demo tabs
+    function showDemo(demoId) {
+      document.querySelectorAll('.demo-tab').forEach(tab => tab.classList.remove('active'));
+      document.querySelectorAll('.demo-content').forEach(content => content.classList.remove('active'));
+
+      document.querySelector(`[onclick="showDemo('${demoId}')"]`).classList.add('active');
+      document.getElementById('demo-' + demoId).classList.add('active');
+    }
+
+    // Conflict resolution demo
+    function resolveConflict() {
+      const deviceA = {
+        text: document.getElementById('deviceA-text').value,
+        timestamp: parseInt(document.getElementById('deviceA-time').value),
+        deviceId: document.getElementById('deviceA-id').value
+      };
+
+      const deviceB = {
+        text: document.getElementById('deviceB-text').value,
+        timestamp: parseInt(document.getElementById('deviceB-time').value),
+        deviceId: document.getElementById('deviceB-id').value
+      };
+
+      // LWW algorithm
+      let winner, explanation;
+
+      if (deviceB.timestamp > deviceA.timestamp) {
+        winner = 'B';
+        explanation = `Device B wins because its timestamp (${deviceB.timestamp}) is greater than Device A's (${deviceA.timestamp}).`;
+      } else if (deviceA.timestamp > deviceB.timestamp) {
+        winner = 'A';
+        explanation = `Device A wins because its timestamp (${deviceA.timestamp}) is greater than Device B's (${deviceB.timestamp}).`;
+      } else {
+        // Tiebreaker
+        if (deviceB.deviceId > deviceA.deviceId) {
+          winner = 'B';
+          explanation = `Timestamps are equal! Tiebreaker: Device B's ID "${deviceB.deviceId}" > "${deviceA.deviceId}" (lexicographic).`;
+        } else {
+          winner = 'A';
+          explanation = `Timestamps are equal! Tiebreaker: Device A's ID "${deviceA.deviceId}" > "${deviceB.deviceId}" (lexicographic).`;
+        }
+      }
+
+      const resultPanel = document.getElementById('conflict-result');
+      resultPanel.className = 'result-panel show winner-' + winner.toLowerCase();
+
+      document.getElementById('result-title').textContent =
+        `Winner: Device ${winner} - "${winner === 'A' ? deviceA.text : deviceB.text}"`;
+      document.getElementById('result-explanation').textContent = explanation;
+      document.getElementById('result-code').textContent =
+        `shouldIncomingWin(${winner === 'B' ? 'deviceB' : 'deviceA'}, ${winner === 'B' ? 'deviceA' : 'deviceB'}) // returns true`;
+    }
+
+    // WebSocket demo
+    function simulateWsMessage(type) {
+      const messages = document.getElementById('ws-messages');
+      const msgDiv = document.createElement('div');
+      msgDiv.className = 'ws-message ' + (type === 'sync' ? 'outgoing' : 'incoming');
+
+      let content;
+      switch (type) {
+        case 'connect':
+          content = {
+            type: 'welcome',
+            peerId: 'peer-' + Math.random().toString(36).substr(2, 6),
+            timestamp: Date.now()
+          };
+          msgDiv.innerHTML = `<div class="direction">← INCOMING</div><pre>${JSON.stringify(content, null, 2)}</pre>`;
+          break;
+        case 'sync':
+          content = {
+            type: 'sync',
+            deviceId: 'device-' + Math.random().toString(36).substr(2, 4),
+            schema: 'todos',
+            changes: [{
+              id: 'todo-' + Math.random().toString(36).substr(2, 6),
+              data: { text: 'New todo item', completed: false },
+              updatedAt: Date.now()
+            }]
+          };
+          msgDiv.innerHTML = `<div class="direction">→ OUTGOING</div><pre>${JSON.stringify(content, null, 2)}</pre>`;
+          break;
+        case 'ping':
+          content = { type: 'ping', timestamp: Date.now() };
+          msgDiv.innerHTML = `<div class="direction">→ OUTGOING</div><pre>${JSON.stringify(content, null, 2)}</pre>`;
+
+          // Add pong response
+          setTimeout(() => {
+            const pongDiv = document.createElement('div');
+            pongDiv.className = 'ws-message incoming';
+            pongDiv.innerHTML = `<div class="direction">← INCOMING</div><pre>${JSON.stringify({ type: 'pong', timestamp: Date.now() }, null, 2)}</pre>`;
+            messages.appendChild(pongDiv);
+            messages.scrollTop = messages.scrollHeight;
+          }, 300);
+          break;
+      }
+
+      messages.appendChild(msgDiv);
+      messages.scrollTop = messages.scrollHeight;
+    }
+
+    function clearWsMessages() {
+      document.getElementById('ws-messages').innerHTML = '';
+    }
+
+    // Cross-tab demo
+    function addTodoToTab(tabId) {
+      const input = document.getElementById(tabId + '-input');
+      const text = input.value.trim();
+      if (!text) return;
+
+      const todo = {
+        id: 'todo-' + Math.random().toString(36).substr(2, 6),
+        text: text,
+        completed: false
+      };
+
+      // Add to source tab
+      const sourceList = document.getElementById(tabId + '-todos');
+      const todoEl = document.createElement('div');
+      todoEl.className = 'tab-todo-item syncing';
+      todoEl.innerHTML = `<input type="checkbox"> ${todo.text}`;
+      sourceList.appendChild(todoEl);
+
+      input.value = '';
+
+      // Show broadcast message
+      const indicator = document.getElementById('broadcast-indicator');
+      const message = document.getElementById('broadcast-message');
+      indicator.classList.add('show');
+      message.textContent = JSON.stringify({
+        type: 'entity_changed',
+        collection: 'todos',
+        entityId: todo.id,
+        operation: 'create',
+        sourceTabId: tabId,
+        timestamp: Date.now()
+      }, null, 2);
+
+      // Simulate cross-tab sync
+      setTimeout(() => {
+        todoEl.classList.remove('syncing');
+
+        // Add to other tab
+        const otherTabId = tabId === 'tab1' ? 'tab2' : 'tab1';
+        const otherList = document.getElementById(otherTabId + '-todos');
+        const syncedTodo = document.createElement('div');
+        syncedTodo.className = 'tab-todo-item';
+        syncedTodo.innerHTML = `<input type="checkbox"> ${todo.text}`;
+        otherList.appendChild(syncedTodo);
+
+        // Hide broadcast indicator after delay
+        setTimeout(() => {
+          indicator.classList.remove('show');
+        }, 2000);
+      }, 500);
+    }
+
+    // Data flow demo
+    function updateFlowSteps() {
+      document.querySelectorAll('.sequence-step').forEach((step, index) => {
+        if (index < currentFlowStep) {
+          step.classList.add('active');
+        } else {
+          step.classList.remove('active');
+        }
+      });
+    }
+
+    function nextFlowStep() {
+      if (currentFlowStep < 8) {
+        currentFlowStep++;
+        updateFlowSteps();
+      }
+    }
+
+    function prevFlowStep() {
+      if (currentFlowStep > 0) {
+        currentFlowStep--;
+        updateFlowSteps();
+      }
+    }
+
+    function resetFlowSteps() {
+      currentFlowStep = 0;
+      updateFlowSteps();
+    }
+
+    // Initial setup
+    updateStep();
+
+    // Add initial WS messages
+    simulateWsMessage('connect');
+  </script>
+</body>
+</html>
