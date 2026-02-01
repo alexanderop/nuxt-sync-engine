@@ -30,10 +30,6 @@ import { entityToSyncData, getRecord, partialToChanges, putRecord, syncItemToEnt
 import { txQueue } from '~/utils/idb-transaction-queue'
 import { useIDBSyncEngine } from './useIDBSyncEngine'
 
-// =============================================================================
-// TYPE DEFINITIONS
-// =============================================================================
-
 /**
  * Return type for the useCoState composable.
  */
@@ -49,10 +45,6 @@ export interface UseCoStateReturn<T extends { id: string }> {
   /** Refresh data from IndexedDB */
   refresh: () => Promise<void>
 }
-
-// =============================================================================
-// COMPOSABLE
-// =============================================================================
 
 /**
  * Subscribe to a single entity by ID from IndexedDB.
@@ -121,14 +113,7 @@ export function useCoState<T extends { id: string }>(
   )
 
   // Transform error to proper Error type
-  const error = computed<Error | null>(() => {
-    const err = rawError.value
-    if (!err)
-      return null
-    if (err instanceof Error)
-      return err
-    return new Error(String(err))
-  })
+  const error = computed(() => toError(rawError.value))
 
   // Watch for database ready and id changes
   watch(
@@ -192,7 +177,7 @@ export function useCoState<T extends { id: string }>(
     )
 
     // Mark as unsynced and record the operation
-    await markUnsynced(currentId)
+    markUnsynced(currentId)
     await recordOperation(collection, currentId, 'update', partialToChanges(changes))
   }
 

@@ -31,10 +31,6 @@ import { entityToSyncData, getAllRecords, getRecord, putRecord, syncItemToEntity
 import { txQueue } from '~/utils/idb-transaction-queue'
 import { useIDBSyncEngine } from './useIDBSyncEngine'
 
-// =============================================================================
-// TYPE DEFINITIONS
-// =============================================================================
-
 /**
  * Options for the useCoList composable.
  */
@@ -62,10 +58,6 @@ export interface UseCoListReturn<T extends { id: string }> {
   /** Update an item in the collection */
   update: (id: string, changes: Partial<Omit<T, 'id'>>) => Promise<void>
 }
-
-// =============================================================================
-// COMPOSABLE
-// =============================================================================
 
 /**
  * Subscribe to all items in a collection from IndexedDB.
@@ -141,14 +133,7 @@ export function useCoList<T extends { id: string }>(
   )
 
   // Transform error to proper Error type
-  const error = computed<Error | null>(() => {
-    const err = rawError.value
-    if (!err)
-      return null
-    if (err instanceof Error)
-      return err
-    return new Error(String(err))
-  })
+  const error = computed(() => toError(rawError.value))
 
   // Watch for database ready state
   watch(
@@ -161,11 +146,7 @@ export function useCoList<T extends { id: string }>(
     { immediate: true },
   )
 
-  // =========================================================================
   // Cross-Tab Sync Subscription
-  // =========================================================================
-
-  // Subscribe to changes from other tabs
   onMounted(() => {
     const unsubscribe = onCrossTabChange((change) => {
       // Only refresh if the change is for this collection
@@ -221,7 +202,7 @@ export function useCoList<T extends { id: string }>(
     )
 
     // Mark as unsynced and record the operation
-    await markUnsynced(id)
+    markUnsynced(id)
     await recordOperation(collection, id, 'create', entityToSyncData(entity))
 
     // Refresh the list to include the new item
@@ -270,7 +251,7 @@ export function useCoList<T extends { id: string }>(
     )
 
     // Mark as unsynced and record the operation
-    await markUnsynced(id)
+    markUnsynced(id)
     await recordOperation(collection, id, 'delete', { deleted: true })
 
     // Refresh the list to remove the item
@@ -320,9 +301,8 @@ export function useCoList<T extends { id: string }>(
     )
 
     // Mark as unsynced and record the operation
-    await markUnsynced(id)
-    const changeData: Record<string, unknown> = { ...changes }
-    await recordOperation(collection, id, 'update', changeData)
+    markUnsynced(id)
+    await recordOperation(collection, id, 'update', { ...changes })
 
     // Refresh the list to show the update
     await refresh()

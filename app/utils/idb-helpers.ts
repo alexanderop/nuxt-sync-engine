@@ -124,12 +124,20 @@ export function entityToSyncData<T extends { id: string }>(
 export function partialToChanges<T extends { id: string }>(
   partial: Partial<T>,
 ): Record<string, unknown> {
-  const changes: Record<string, unknown> = {}
-  // Use Object.entries for proper typing without assertions
-  for (const [key, value] of Object.entries(partial)) {
-    if (key !== 'id') {
-      changes[key] = value
-    }
-  }
+  const { id: _id, ...changes } = partial
   return changes
+}
+
+/**
+ * Normalize an unknown error value to an Error instance.
+ * Useful for transforming error refs from useAsyncState.
+ */
+export function toError(err: unknown): Error | null {
+  if (!err) {
+    return null
+  }
+  if (err instanceof Error) {
+    return err
+  }
+  return new Error(String(err))
 }

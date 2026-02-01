@@ -27,16 +27,8 @@ import { useIndexedDB } from './useIndexedDB'
 import { useSessionTracking } from './useSessionTracking'
 import { useUnsyncedTracker } from './useUnsyncedTracker'
 
-// =============================================================================
-// CONSTANTS
-// =============================================================================
-
 /** No-op send function for when WebSocket is not configured */
 const noopSend = (_data: string | ArrayBuffer | Blob): boolean => false
-
-// =============================================================================
-// TYPE DEFINITIONS
-// =============================================================================
 
 /**
  * Options for the IDB Sync Engine provider.
@@ -89,16 +81,8 @@ export interface UseIDBSyncEngineReturn {
   onCrossTabChange: UseCrossTabSyncReturn['onMessage']
 }
 
-// =============================================================================
-// CONSTANTS
-// =============================================================================
-
 const DEVICE_ID_STORAGE_KEY = 'idb-sync-engine-device-id'
 const IDB_SYNC_ENGINE_INJECTION_KEY = Symbol('idb-sync-engine')
-
-// =============================================================================
-// UTILITY FUNCTIONS
-// =============================================================================
 
 /**
  * Get or create a device ID from localStorage.
@@ -121,10 +105,6 @@ function getOrCreateDeviceId(): string {
   return deviceId
 }
 
-// =============================================================================
-// PROVIDER COMPOSABLE
-// =============================================================================
-
 /**
  * Create the IDB Sync Engine provider and consumer using VueUse's createInjectionState.
  *
@@ -138,25 +118,15 @@ function getOrCreateDeviceId(): string {
  */
 const [useIDBSyncEngineProvider, useIDBSyncEngineInjected] = createInjectionState(
   (options: IDBSyncEngineOptions = {}): UseIDBSyncEngineReturn => {
-    // =========================================================================
     // Tab ID (unique per browser tab)
-    // =========================================================================
-
     const tabId = crypto.randomUUID()
 
-    // =========================================================================
     // Device ID
-    // =========================================================================
-
     const deviceId = ref(getOrCreateDeviceId())
 
-    // =========================================================================
     // IndexedDB Initialization
-    // =========================================================================
-
     const { db, isReady, init } = useIndexedDB()
 
-    // Initialize database on mount
     onMounted(async () => {
       try {
         await init()
@@ -167,31 +137,18 @@ const [useIDBSyncEngineProvider, useIDBSyncEngineInjected] = createInjectionStat
       }
     })
 
-    // =========================================================================
-    // Network Status (VueUse)
-    // =========================================================================
-
+    // Network Status
     const isOnline = useOnline()
 
-    // =========================================================================
-    // WebSocket Connection (VueUse)
-    // =========================================================================
-
-    // Default WebSocket status when no peer is configured
+    // WebSocket Connection
     const defaultWsStatus = ref<WebSocketStatus>('CLOSED')
-
-    // Track sync errors
     const syncError = ref<Error | null>(null)
-
-    // Maximum retry attempts before giving up
     const MAX_RETRIES = 5
 
-    // Configure WebSocket if peer URL is provided
     const wsConfig = options.peer
       ? useWebSocket(options.peer, {
           autoReconnect: {
             retries: MAX_RETRIES,
-            // Exponential backoff: 1s, 2s, 4s, 8s, ... max 30s
             delay: (retries: number) => Math.min(1000 * 2 ** (retries - 1), 30000),
             onFailed() {
               syncError.value = new Error(
@@ -211,43 +168,28 @@ const [useIDBSyncEngineProvider, useIDBSyncEngineInjected] = createInjectionStat
         })
       : null
 
-    // Extract WebSocket status, send function, and open function
     const wsStatus = wsConfig ? wsConfig.status : defaultWsStatus
     const wsSend = wsConfig ? wsConfig.send : noopSend
     const wsOpen = wsConfig ? wsConfig.open : () => {}
 
-    /**
-     * Manually retry the WebSocket connection.
-     * Resets error state before attempting.
-     */
     function retry(): void {
       syncError.value = null
       wsOpen()
       console.info('[idb-sync-engine] Manual retry initiated')
     }
 
-    // =========================================================================
     // Unsynced Tracker
-    // =========================================================================
-
     const unsyncedTracker = useUnsyncedTracker(db)
 
-    // =========================================================================
-    // Session Tracking
-    // =========================================================================
-
-    // Session tracking needs the deviceId value
-    // We create it lazily after deviceId is available
+    // Session Tracking (lazy initialization)
     const sessionTrackingRef = shallowRef<UseSessionTrackingReturn | null>(null)
 
-    // Initialize session tracking when device ID is ready
     watchEffect(() => {
       if (deviceId.value && !sessionTrackingRef.value) {
         sessionTrackingRef.value = useSessionTracking(db, deviceId.value)
       }
     })
 
-    // Wrapper functions for session tracking that handle the lazy initialization
     async function recordOperation(
       entityType: string,
       entityId: string,
@@ -272,52 +214,30 @@ const [useIDBSyncEngineProvider, useIDBSyncEngineInjected] = createInjectionStat
       return tracking.getKnownState(entityType, entityId)
     }
 
-    // =========================================================================
     // Cross-Tab Sync
-    // =========================================================================
-
     const crossTabSync = useCrossTabSync(tabId)
 
-    // =========================================================================
-    // Return Combined State
-    // =========================================================================
-
     return {
-      // Database
       db,
       isReady,
-
-      // Network
       isOnline,
       deviceId,
       tabId,
-
-      // WebSocket
       wsStatus,
       send: wsSend,
       syncError: readonly(syncError),
       retry,
-
-      // Unsynced Tracker
       markUnsynced: unsyncedTracker.markUnsynced,
       markSynced: unsyncedTracker.markSynced,
       getUnsyncedIds: unsyncedTracker.getUnsyncedIds,
-
-      // Session Tracking
       recordOperation,
       getKnownState,
-
-      // Cross-Tab Sync
       broadcastChange: crossTabSync.broadcast,
       onCrossTabChange: crossTabSync.onMessage,
     }
   },
   { injectionKey: IDB_SYNC_ENGINE_INJECTION_KEY },
 )
-
-// =============================================================================
-// CONSUMER COMPOSABLE (WITH ERROR HANDLING)
-// =============================================================================
 
 /**
  * Consumer composable that throws if provider is not found.
@@ -347,9 +267,5 @@ export function useIDBSyncEngine(): UseIDBSyncEngineReturn {
 
   return state
 }
-
-// =============================================================================
-// EXPORTS
-// =============================================================================
 
 export { useIDBSyncEngineProvider }

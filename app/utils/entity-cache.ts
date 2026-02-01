@@ -12,30 +12,36 @@ export class EntityCache {
     this.maxAge = maxAge
   }
 
-  get<T>(key: string): T | undefined {
+  /**
+   * Check if an entry is valid (exists and not expired).
+   * Removes expired entries as a side effect.
+   */
+  private getValidEntry(key: string): CacheEntry<unknown> | undefined {
     const entry = this.cache.get(key)
-
     if (!entry) {
       return undefined
     }
 
     const isExpired = Date.now() - entry.timestamp > this.maxAge
-
     if (isExpired) {
       this.cache.delete(key)
       return undefined
     }
 
+    return entry
+  }
+
+  get<T>(key: string): T | undefined {
+    const entry = this.getValidEntry(key)
+    if (!entry) {
+      return undefined
+    }
     // eslint-disable-next-line ts/consistent-type-assertions -- Cache stores unknown, caller provides type
     return entry.data as T
   }
 
   set<T>(key: string, data: T): void {
-    const entry: CacheEntry<T> = {
-      data,
-      timestamp: Date.now(),
-    }
-    this.cache.set(key, entry)
+    this.cache.set(key, { data, timestamp: Date.now() })
   }
 
   invalidate(key: string): void {
@@ -47,20 +53,7 @@ export class EntityCache {
   }
 
   has(key: string): boolean {
-    const entry = this.cache.get(key)
-
-    if (!entry) {
-      return false
-    }
-
-    const isExpired = Date.now() - entry.timestamp > this.maxAge
-
-    if (isExpired) {
-      this.cache.delete(key)
-      return false
-    }
-
-    return true
+    return this.getValidEntry(key) !== undefined
   }
 
   size(): number {

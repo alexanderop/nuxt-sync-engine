@@ -19,10 +19,6 @@ import type { OperationRecord, SessionRecord } from './useIndexedDB'
 import { addRecord, getAllFromIndex, getFromIndex, promisify } from '~/utils/idb-helpers'
 import { txQueue } from '~/utils/idb-transaction-queue'
 
-// =============================================================================
-// TYPE DEFINITIONS
-// =============================================================================
-
 export interface UseSessionTrackingReturn {
   /** Unique session ID for this browser session */
   sessionId: string
@@ -39,10 +35,6 @@ export interface UseSessionTrackingReturn {
     entityId: string,
   ) => Promise<Record<string, number>>
 }
-
-// =============================================================================
-// UTILITY FUNCTIONS
-// =============================================================================
 
 /**
  * Generate a short random ID (nanoid-like).
@@ -62,10 +54,6 @@ function generateId(length = 8): string {
 function createSessionId(deviceId: string): string {
   return `${deviceId}_${Date.now()}_${generateId()}`
 }
-
-// =============================================================================
-// COMPOSABLE
-// =============================================================================
 
 /**
  * Session tracking composable for recording and querying operations.

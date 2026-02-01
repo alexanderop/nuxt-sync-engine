@@ -19,10 +19,6 @@ import { useDebounceFn } from '@vueuse/core'
 import { getAllFromIndex, getFromIndex, promisify } from '~/utils/idb-helpers'
 import { txQueue } from '~/utils/idb-transaction-queue'
 
-// =============================================================================
-// TYPE DEFINITIONS
-// =============================================================================
-
 interface PendingUpdate {
   id: string
   synced: boolean
@@ -40,10 +36,6 @@ export interface UseUnsyncedTrackerReturn {
   /** Force flush pending updates immediately */
   flush: () => Promise<void>
 }
-
-// =============================================================================
-// COMPOSABLE
-// =============================================================================
 
 /**
  * Unsynced tracker composable for managing sync state.

@@ -17,16 +17,8 @@
 import type { Ref, ShallowRef } from 'vue'
 import type { SyncItem } from '../../shared/types'
 
-// =============================================================================
-// DATABASE CONFIGURATION
-// =============================================================================
-
 const DB_NAME = 'sync-engine'
 const DB_VERSION = 1
-
-// =============================================================================
-// TYPE DEFINITIONS
-// =============================================================================
 
 /**
  * Session record for tracking edit sessions per entity.
@@ -109,16 +101,9 @@ export interface UseIndexedDBReturn {
   init: () => Promise<IDBDatabase>
 }
 
-// =============================================================================
-// MODULE STATE (Singleton pattern)
-// =============================================================================
-
+// Module state (singleton pattern)
 let dbInstance: IDBDatabase | null = null
 let initPromise: Promise<IDBDatabase> | null = null
-
-// =============================================================================
-// COMPOSABLE
-// =============================================================================
 
 /**
  * IndexedDB composable for the Sync Engine.
@@ -189,10 +174,6 @@ export function useIndexedDB(): UseIndexedDBReturn {
   }
 }
 
-// =============================================================================
-// DATABASE INITIALIZATION
-// =============================================================================
-
 /**
  * Initialize the IndexedDB database with all object stores.
  */
@@ -238,11 +219,7 @@ function initializeDatabase(): Promise<IDBDatabase> {
  * Create the initial database schema (version 1).
  */
 function createInitialSchema(database: IDBDatabase): void {
-  // =========================================================================
   // Entity Stores
-  // =========================================================================
-
-  // Todos store
   if (!database.objectStoreNames.contains('todos')) {
     const todos = database.createObjectStore('todos', { keyPath: 'id' })
     todos.createIndex('by_updated_at', 'updatedAt')
@@ -257,11 +234,7 @@ function createInitialSchema(database: IDBDatabase): void {
     console.info('[indexeddb] Created "projects" store')
   }
 
-  // =========================================================================
   // Session Tracking (Jazz pattern)
-  // =========================================================================
-
-  // Sessions store - tracks edit sessions per entity
   if (!database.objectStoreNames.contains('sessions')) {
     const sessions = database.createObjectStore('sessions', {
       autoIncrement: true,
@@ -285,11 +258,7 @@ function createInitialSchema(database: IDBDatabase): void {
     console.info('[indexeddb] Created "operations" store')
   }
 
-  // =========================================================================
   // Sync Tracking
-  // =========================================================================
-
-  // Unsynced store - server-only sync tracking
   if (!database.objectStoreNames.contains('unsynced')) {
     const unsynced = database.createObjectStore('unsynced', {
       autoIncrement: true,
@@ -306,10 +275,6 @@ function createInitialSchema(database: IDBDatabase): void {
     console.info('[indexeddb] Created "sync_meta" store')
   }
 }
-
-// =============================================================================
-// UTILITY FUNCTIONS
-// =============================================================================
 
 /**
  * Delete the database (for testing or reset).
