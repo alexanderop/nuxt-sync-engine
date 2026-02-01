@@ -10,6 +10,23 @@ pnpm build        # Build for production
 pnpm setup:wasm   # Copy sql.js WASM to public/
 ```
 
+## Code Quality (Typecheck & Lint)
+
+Run these commands to verify code quality before committing:
+
+```bash
+pnpm typecheck    # TypeScript type checking (vue-tsc --noEmit)
+pnpm lint         # Run both oxlint and eslint
+pnpm lint:fix     # Auto-fix lint issues
+```
+
+Individual linters:
+
+```bash
+pnpm lint:oxlint  # Fast Rust-based linter only
+pnpm lint:eslint  # ESLint only
+```
+
 ## Stack
 
 - Nuxt 4, Vue 3, TypeScript

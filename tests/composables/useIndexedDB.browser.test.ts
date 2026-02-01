@@ -297,8 +297,8 @@ describe('createTestDB utility', () => {
       db.close()
       await new Promise<void>((resolve, reject) => {
         const request = indexedDB.deleteDatabase(db.name)
-        request.onsuccess = () => resolve()
-        request.onerror = () => reject(request.error)
+        request.addEventListener('success', () => resolve())
+        request.addEventListener('error', () => reject(request.error))
       })
     }
   })
@@ -319,13 +319,13 @@ describe('createTestDB utility', () => {
       await Promise.all([
         new Promise<void>((resolve) => {
           const request = indexedDB.deleteDatabase(db1.name)
-          request.onsuccess = () => resolve()
-          request.onerror = () => resolve()
+          request.addEventListener('success', () => resolve())
+          request.addEventListener('error', () => resolve())
         }),
         new Promise<void>((resolve) => {
           const request = indexedDB.deleteDatabase(db2.name)
-          request.onsuccess = () => resolve()
-          request.onerror = () => resolve()
+          request.addEventListener('success', () => resolve())
+          request.addEventListener('error', () => resolve())
         }),
       ])
     }

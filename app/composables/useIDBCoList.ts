@@ -12,16 +12,23 @@
  *
  * @example
  * ```typescript
- * const { items, isLoading, refresh } = useCoList<TodoData>('todos', {
+ * const { items, isLoading, refresh, create, remove } = useCoList<TodoData>('todos', {
  *   where: (item) => !item.completed
  * })
+ *
+ * // Create a new todo
+ * const todo = await create({ text: 'Buy groceries', completed: false })
+ *
+ * // Remove a todo (soft delete)
+ * await remove('todo-123')
  * ```
  */
 
 import type { Ref } from 'vue'
 import type { SyncItem } from '../../shared/types'
 import { useAsyncState } from '@vueuse/core'
-import { getAllRecords, syncItemToEntity } from '~/utils/idb-helpers'
+import { entityToSyncData, getAllRecords, getRecord, putRecord, syncItemToEntity } from '~/utils/idb-helpers'
+import { txQueue } from '~/utils/idb-transaction-queue'
 import { useIDBSyncEngine } from './useIDBSyncEngine'
 
 // =============================================================================
@@ -48,6 +55,12 @@ export interface UseCoListReturn<T extends { id: string }> {
   error: Ref<Error | null>
   /** Refresh data from IndexedDB */
   refresh: () => Promise<void>
+  /** Create a new item in the collection */
+  create: (data: Omit<T, 'id'>) => Promise<Omit<T, 'id'> & { id: string }>
+  /** Remove an item from the collection (soft delete) */
+  remove: (id: string) => Promise<void>
+  /** Update an item in the collection */
+  update: (id: string, changes: Partial<Omit<T, 'id'>>) => Promise<void>
 }
 
 // =============================================================================
@@ -78,7 +91,7 @@ export function useCoList<T extends { id: string }>(
   collection: string,
   options: UseCoListOptions<T> = {},
 ): UseCoListReturn<T> {
-  const { db, isReady } = useIDBSyncEngine()
+  const { db, isReady, deviceId, markUnsynced, recordOperation, broadcastChange, onCrossTabChange } = useIDBSyncEngine()
   const { where } = options
 
   /**
@@ -148,11 +161,174 @@ export function useCoList<T extends { id: string }>(
     { immediate: true },
   )
 
+  // =========================================================================
+  // Cross-Tab Sync Subscription
+  // =========================================================================
+
+  // Subscribe to changes from other tabs
+  onMounted(() => {
+    const unsubscribe = onCrossTabChange((change) => {
+      // Only refresh if the change is for this collection
+      if (change.collection === collection) {
+        execute()
+      }
+    })
+
+    onUnmounted(unsubscribe)
+  })
+
   /**
    * Refresh data from IndexedDB.
    */
   async function refresh(): Promise<void> {
     await execute()
+  }
+
+  /**
+   * Create a new item in the collection.
+   */
+  async function create(data: Omit<T, 'id'>): Promise<Omit<T, 'id'> & { id: string }> {
+    const database = db.value
+
+    if (!database) {
+      throw new Error('[useCoList] Database not initialized')
+    }
+
+    const now = Date.now()
+    const id = crypto.randomUUID()
+
+    // Create the entity with id - explicit type annotation avoids assertion
+    const entity: Omit<T, 'id'> & { id: string } = { id, ...data }
+
+    // Create the SyncItem for storage
+    const syncItem: SyncItem = {
+      id,
+      data: entityToSyncData(entity),
+      createdAt: now,
+      updatedAt: now,
+      deviceId: deviceId.value,
+      deleted: false,
+    }
+
+    await txQueue.enqueue(
+      database,
+      [collection],
+      'readwrite',
+      async (tx) => {
+        const store = tx.objectStore(collection)
+        await putRecord(store, syncItem)
+      },
+    )
+
+    // Mark as unsynced and record the operation
+    await markUnsynced(id)
+    await recordOperation(collection, id, 'create', entityToSyncData(entity))
+
+    // Refresh the list to include the new item
+    await refresh()
+
+    // Notify other tabs about the change
+    broadcastChange({ type: 'entity_changed', collection, entityId: id, operation: 'create' })
+
+    return entity
+  }
+
+  /**
+   * Remove an item from the collection (soft delete).
+   */
+  async function remove(id: string): Promise<void> {
+    const database = db.value
+
+    if (!database) {
+      throw new Error('[useCoList] Database not initialized')
+    }
+
+    const now = Date.now()
+
+    await txQueue.enqueue(
+      database,
+      [collection],
+      'readwrite',
+      async (tx) => {
+        const store = tx.objectStore(collection)
+        const existingItem = await getRecord<SyncItem>(store, id)
+
+        if (!existingItem) {
+          throw new Error(`[useCoList] Item not found: ${id}`)
+        }
+
+        // Soft delete - mark as deleted
+        const updatedItem: SyncItem = {
+          ...existingItem,
+          deleted: true,
+          updatedAt: now,
+          deviceId: deviceId.value,
+        }
+
+        await putRecord(store, updatedItem)
+      },
+    )
+
+    // Mark as unsynced and record the operation
+    await markUnsynced(id)
+    await recordOperation(collection, id, 'delete', { deleted: true })
+
+    // Refresh the list to remove the item
+    await refresh()
+
+    // Notify other tabs about the change
+    broadcastChange({ type: 'entity_changed', collection, entityId: id, operation: 'delete' })
+  }
+
+  /**
+   * Update an item in the collection.
+   */
+  async function update(id: string, changes: Partial<Omit<T, 'id'>>): Promise<void> {
+    const database = db.value
+
+    if (!database) {
+      throw new Error('[useCoList] Database not initialized')
+    }
+
+    const now = Date.now()
+
+    await txQueue.enqueue(
+      database,
+      [collection],
+      'readwrite',
+      async (tx) => {
+        const store = tx.objectStore(collection)
+        const existingItem = await getRecord<SyncItem>(store, id)
+
+        if (!existingItem) {
+          throw new Error(`[useCoList] Item not found: ${id}`)
+        }
+
+        // Merge changes into existing data
+        const updatedItem: SyncItem = {
+          ...existingItem,
+          data: {
+            ...existingItem.data,
+            ...changes,
+          },
+          updatedAt: now,
+          deviceId: deviceId.value,
+        }
+
+        await putRecord(store, updatedItem)
+      },
+    )
+
+    // Mark as unsynced and record the operation
+    await markUnsynced(id)
+    const changeData: Record<string, unknown> = { ...changes }
+    await recordOperation(collection, id, 'update', changeData)
+
+    // Refresh the list to show the update
+    await refresh()
+
+    // Notify other tabs about the change
+    broadcastChange({ type: 'entity_changed', collection, entityId: id, operation: 'update' })
   }
 
   // Return refs directly - useAsyncState already manages mutability
@@ -162,5 +338,8 @@ export function useCoList<T extends { id: string }>(
     isLoading,
     error,
     refresh,
+    create,
+    remove,
+    update,
   }
 }

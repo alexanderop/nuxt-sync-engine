@@ -18,12 +18,21 @@
  */
 
 import type { Ref, ShallowRef } from 'vue'
+import type { UseCrossTabSyncReturn } from './useCrossTabSync'
 import type { UseSessionTrackingReturn } from './useSessionTracking'
 import type { UseUnsyncedTrackerReturn } from './useUnsyncedTracker'
 import { createInjectionState, useOnline, useWebSocket } from '@vueuse/core'
+import { useCrossTabSync } from './useCrossTabSync'
 import { useIndexedDB } from './useIndexedDB'
 import { useSessionTracking } from './useSessionTracking'
 import { useUnsyncedTracker } from './useUnsyncedTracker'
+
+// =============================================================================
+// CONSTANTS
+// =============================================================================
+
+/** No-op send function for when WebSocket is not configured */
+const noopSend = (_data: string | ArrayBuffer | Blob): boolean => false
 
 // =============================================================================
 // TYPE DEFINITIONS
@@ -54,10 +63,16 @@ export interface UseIDBSyncEngineReturn {
   isOnline: Ref<boolean>
   /** Unique device identifier */
   deviceId: Ref<string>
+  /** Unique identifier for this browser tab */
+  tabId: string
   /** WebSocket connection status */
   wsStatus: Ref<WebSocketStatus>
   /** Send data through WebSocket */
   send: (data: string | ArrayBuffer | Blob) => boolean
+  /** Current sync error (null if no error) */
+  syncError: Readonly<Ref<Error | null>>
+  /** Manually retry the WebSocket connection */
+  retry: () => void
   /** Mark an entity as needing sync */
   markUnsynced: UseUnsyncedTrackerReturn['markUnsynced']
   /** Mark an entity as synced */
@@ -68,6 +83,10 @@ export interface UseIDBSyncEngineReturn {
   recordOperation: UseSessionTrackingReturn['recordOperation']
   /** Get known state for an entity */
   getKnownState: UseSessionTrackingReturn['getKnownState']
+  /** Broadcast a change to other tabs */
+  broadcastChange: UseCrossTabSyncReturn['broadcast']
+  /** Subscribe to changes from other tabs */
+  onCrossTabChange: UseCrossTabSyncReturn['onMessage']
 }
 
 // =============================================================================
@@ -120,6 +139,12 @@ function getOrCreateDeviceId(): string {
 const [useIDBSyncEngineProvider, useIDBSyncEngineInjected] = createInjectionState(
   (options: IDBSyncEngineOptions = {}): UseIDBSyncEngineReturn => {
     // =========================================================================
+    // Tab ID (unique per browser tab)
+    // =========================================================================
+
+    const tabId = crypto.randomUUID()
+
+    // =========================================================================
     // Device ID
     // =========================================================================
 
@@ -154,24 +179,52 @@ const [useIDBSyncEngineProvider, useIDBSyncEngineInjected] = createInjectionStat
 
     // Default WebSocket status when no peer is configured
     const defaultWsStatus = ref<WebSocketStatus>('CLOSED')
-    const noopSend = (_data: string | ArrayBuffer | Blob): boolean => false
+
+    // Track sync errors
+    const syncError = ref<Error | null>(null)
+
+    // Maximum retry attempts before giving up
+    const MAX_RETRIES = 5
 
     // Configure WebSocket if peer URL is provided
     const wsConfig = options.peer
       ? useWebSocket(options.peer, {
           autoReconnect: {
-            // Infinite retries with exponential backoff
-            retries: () => true,
+            retries: MAX_RETRIES,
             // Exponential backoff: 1s, 2s, 4s, 8s, ... max 30s
             delay: (retries: number) => Math.min(1000 * 2 ** (retries - 1), 30000),
+            onFailed() {
+              syncError.value = new Error(
+                `Sync connection failed after ${MAX_RETRIES} attempts`,
+              )
+              console.error('[idb-sync-engine] Max reconnection attempts reached')
+            },
           },
           immediate: true,
+          onConnected() {
+            syncError.value = null
+            console.info('[idb-sync-engine] WebSocket connected')
+          },
+          onError() {
+            console.error('[idb-sync-engine] WebSocket error')
+          },
         })
       : null
 
-    // Extract WebSocket status and send function
+    // Extract WebSocket status, send function, and open function
     const wsStatus = wsConfig ? wsConfig.status : defaultWsStatus
     const wsSend = wsConfig ? wsConfig.send : noopSend
+    const wsOpen = wsConfig ? wsConfig.open : () => {}
+
+    /**
+     * Manually retry the WebSocket connection.
+     * Resets error state before attempting.
+     */
+    function retry(): void {
+      syncError.value = null
+      wsOpen()
+      console.info('[idb-sync-engine] Manual retry initiated')
+    }
 
     // =========================================================================
     // Unsynced Tracker
@@ -220,6 +273,12 @@ const [useIDBSyncEngineProvider, useIDBSyncEngineInjected] = createInjectionStat
     }
 
     // =========================================================================
+    // Cross-Tab Sync
+    // =========================================================================
+
+    const crossTabSync = useCrossTabSync(tabId)
+
+    // =========================================================================
     // Return Combined State
     // =========================================================================
 
@@ -231,10 +290,13 @@ const [useIDBSyncEngineProvider, useIDBSyncEngineInjected] = createInjectionStat
       // Network
       isOnline,
       deviceId,
+      tabId,
 
       // WebSocket
       wsStatus,
       send: wsSend,
+      syncError: readonly(syncError),
+      retry,
 
       // Unsynced Tracker
       markUnsynced: unsyncedTracker.markUnsynced,
@@ -244,6 +306,10 @@ const [useIDBSyncEngineProvider, useIDBSyncEngineInjected] = createInjectionStat
       // Session Tracking
       recordOperation,
       getKnownState,
+
+      // Cross-Tab Sync
+      broadcastChange: crossTabSync.broadcast,
+      onCrossTabChange: crossTabSync.onMessage,
     }
   },
   { injectionKey: IDB_SYNC_ENGINE_INJECTION_KEY },

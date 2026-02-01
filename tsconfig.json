@@ -9,5 +9,9 @@
     "types/**/*.d.ts",
     "app/**/*",
     "shared/**/*"
+  ],
+  "exclude": [
+    "pinia",
+    "jazz"
   ]
 }

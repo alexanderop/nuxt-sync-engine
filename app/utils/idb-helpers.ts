@@ -1,7 +1,7 @@
 export function promisify<T>(request: IDBRequest<T>): Promise<T> {
   return new Promise((resolve, reject) => {
-    request.onsuccess = () => resolve(request.result)
-    request.onerror = () => reject(request.error)
+    request.addEventListener('success', () => resolve(request.result))
+    request.addEventListener('error', () => reject(request.error))
   })
 }
 
@@ -15,8 +15,8 @@ export function getFromIndex<T>(
 ): Promise<T | undefined> {
   return new Promise((resolve, reject) => {
     const request = index.get(key)
-    request.onsuccess = () => resolve(request.result)
-    request.onerror = () => reject(request.error)
+    request.addEventListener('success', () => resolve(request.result))
+    request.addEventListener('error', () => reject(request.error))
   })
 }
 
@@ -29,8 +29,8 @@ export function getAllFromIndex<T>(
 ): Promise<T[]> {
   return new Promise((resolve, reject) => {
     const request = key !== undefined ? index.getAll(key) : index.getAll()
-    request.onsuccess = () => resolve(request.result)
-    request.onerror = () => reject(request.error)
+    request.addEventListener('success', () => resolve(request.result))
+    request.addEventListener('error', () => reject(request.error))
   })
 }
 
@@ -43,7 +43,7 @@ export function addRecord(
 ): Promise<number> {
   return new Promise((resolve, reject) => {
     const request = store.add(value)
-    request.onsuccess = () => {
+    request.addEventListener('success', () => {
       const result = request.result
       if (typeof result === 'number') {
         resolve(result)
@@ -51,8 +51,8 @@ export function addRecord(
       else {
         resolve(Number(result))
       }
-    }
-    request.onerror = () => reject(request.error)
+    })
+    request.addEventListener('error', () => reject(request.error))
   })
 }
 
@@ -65,8 +65,8 @@ export function getRecord<T>(
 ): Promise<T | undefined> {
   return new Promise((resolve, reject) => {
     const request = store.get(key)
-    request.onsuccess = () => resolve(request.result)
-    request.onerror = () => reject(request.error)
+    request.addEventListener('success', () => resolve(request.result))
+    request.addEventListener('error', () => reject(request.error))
   })
 }
 
@@ -76,8 +76,8 @@ export function getRecord<T>(
 export function getAllRecords<T>(store: IDBObjectStore): Promise<T[]> {
   return new Promise((resolve, reject) => {
     const request = store.getAll()
-    request.onsuccess = () => resolve(request.result)
-    request.onerror = () => reject(request.error)
+    request.addEventListener('success', () => resolve(request.result))
+    request.addEventListener('error', () => reject(request.error))
   })
 }
 
@@ -90,8 +90,8 @@ export function putRecord<T>(
 ): Promise<IDBValidKey> {
   return new Promise((resolve, reject) => {
     const request = store.put(value)
-    request.onsuccess = () => resolve(request.result)
-    request.onerror = () => reject(request.error)
+    request.addEventListener('success', () => resolve(request.result))
+    request.addEventListener('error', () => reject(request.error))
   })
 }
 

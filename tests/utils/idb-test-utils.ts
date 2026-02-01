@@ -73,9 +73,9 @@ export async function createTestDB(): Promise<IDBDatabase> {
       resolve(request.result)
     }
 
-    request.onerror = () => {
+    request.addEventListener('error', () => {
       reject(new Error(`Failed to create test database: ${request.error?.message}`))
-    }
+    })
 
     request.onblocked = () => {
       reject(new Error('Test database creation blocked by other connections'))
@@ -158,9 +158,9 @@ export async function cleanupTestDB(db: IDBDatabase): Promise<void> {
       resolve()
     }
 
-    request.onerror = () => {
+    request.addEventListener('error', () => {
       reject(new Error(`Failed to delete test database: ${request.error?.message}`))
-    }
+    })
 
     request.onblocked = () => {
       // Database is blocked but will eventually be deleted
@@ -234,8 +234,8 @@ export function withTestDB(): () => IDBDatabase {
  */
 export function promisifyRequest<T>(request: IDBRequest<T>): Promise<T> {
   return new Promise((resolve, reject) => {
-    request.onsuccess = () => resolve(request.result)
-    request.onerror = () => reject(request.error)
+    request.addEventListener('success', () => resolve(request.result))
+    request.addEventListener('error', () => reject(request.error))
   })
 }
 
@@ -247,9 +247,9 @@ export function promisifyRequest<T>(request: IDBRequest<T>): Promise<T> {
  */
 export function waitForTransaction(transaction: IDBTransaction): Promise<void> {
   return new Promise((resolve, reject) => {
-    transaction.oncomplete = () => resolve()
-    transaction.onerror = () => reject(transaction.error)
-    transaction.onabort = () => reject(new Error('Transaction aborted'))
+    transaction.addEventListener('complete', () => resolve())
+    transaction.addEventListener('error', () => reject(transaction.error))
+    transaction.addEventListener('abort', () => reject(new Error('Transaction aborted')))
   })
 }
 

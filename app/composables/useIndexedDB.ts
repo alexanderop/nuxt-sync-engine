@@ -223,10 +223,10 @@ function initializeDatabase(): Promise<IDBDatabase> {
       resolve(request.result)
     }
 
-    request.onerror = () => {
+    request.addEventListener('error', () => {
       console.error('[indexeddb] Failed to open database:', request.error)
       reject(request.error)
-    }
+    })
 
     request.onblocked = () => {
       console.warn('[indexeddb] Database upgrade blocked - close other tabs')
@@ -328,24 +328,13 @@ export async function deleteDatabase(): Promise<void> {
       console.info('[indexeddb] Database deleted')
       resolve()
     }
-    request.onerror = () => {
+    request.addEventListener('error', () => {
       console.error('[indexeddb] Failed to delete database:', request.error)
       reject(request.error)
-    }
+    })
     request.onblocked = () => {
       console.warn('[indexeddb] Database deletion blocked - close all tabs')
     }
-  })
-}
-
-/**
- * Promisify an IDBRequest.
- * Utility for working with IndexedDB's callback-based API.
- */
-export function promisify<T>(request: IDBRequest<T>): Promise<T> {
-  return new Promise((resolve, reject) => {
-    request.onsuccess = () => resolve(request.result)
-    request.onerror = () => reject(request.error)
   })
 }
 

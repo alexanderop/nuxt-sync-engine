@@ -8,5 +8,5 @@
     "typescript/no-explicit-any": "error",
     "eslint/no-console": ["error", { "allow": ["warn", "error", "info"] }]
   },
-  "ignorePatterns": [".nuxt", ".output", "node_modules", "dist"]
+  "ignorePatterns": [".nuxt", ".output", "node_modules", "dist", "jazz", "pinia"]
 }

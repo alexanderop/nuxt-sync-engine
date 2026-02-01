@@ -19,7 +19,6 @@
 import type { ComputedRef, Ref } from 'vue'
 import { useIntervalFn, useOnline } from '@vueuse/core'
 import { useIDBSyncEngine } from './useIDBSyncEngine'
-import { useIDBSyncReconnection } from './useIDBSyncReconnection'
 import { useStorageQuota } from './useStorageQuota'
 
 // =============================================================================
@@ -85,11 +84,8 @@ export function useIDBSyncStatus(): UseIDBSyncStatusReturn {
   // Dependencies
   // =========================================================================
 
-  // Get WebSocket status from sync engine
-  const { wsStatus, getUnsyncedIds } = useIDBSyncEngine()
-
-  // Get reconnection state (provides syncError)
-  const { syncError } = useIDBSyncReconnection()
+  // Get WebSocket status and sync error from sync engine
+  const { wsStatus, syncError, getUnsyncedIds } = useIDBSyncEngine()
 
   // Network status
   const isOnline = useOnline()
